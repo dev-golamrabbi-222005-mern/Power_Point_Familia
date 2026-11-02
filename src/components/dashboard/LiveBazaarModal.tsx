@@ -17,7 +17,7 @@ import {
   Receipt
 } from 'lucide-react';
 import { BazaarAssignment, BazaarItem } from '@/src/types/bazaar';
-import { showWarningAlert } from '@/src/lib/alerts';
+import { showSuccessAlert, showErrorAlert, showWarningAlert } from '@/src/lib/alerts';
 
 interface LiveBazaarModalProps {
   isOpen: boolean;
@@ -163,14 +163,15 @@ export default function LiveBazaarModal({
         throw new Error(err.message || 'Failed to submit bazaar bill');
       }
 
-      setSuccessMsg('Bazaar bill submitted successfully! Awaiting manager reconciliation.');
-      setTimeout(() => {
-        setSuccessMsg('');
-        onSuccess?.();
-        onClose();
-      }, 1500);
+      await showSuccessAlert(
+        'বাজার বিল জমা হয়েছে!',
+        'Bazaar bill submitted successfully! Awaiting manager reconciliation.'
+      );
+      onSuccess?.();
+      onClose();
     } catch (err: any) {
       console.error(err);
+      showErrorAlert('Submission Error', err.message || 'Error submitting bazaar bill');
       onError?.(err.message || 'Error submitting bazaar bill');
     } finally {
       setSubmitting(false);

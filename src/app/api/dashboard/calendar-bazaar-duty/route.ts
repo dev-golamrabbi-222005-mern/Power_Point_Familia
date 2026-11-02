@@ -19,10 +19,25 @@ export async function GET(req: NextRequest) {
       a => a.date === date && (a.userId === userId || a.member2Id === userId)
     );
 
+    // Find if anyone in the mess is assigned on this date
+    const messAssignment = db.bazaarAssignments.find(a => a.date === date);
+    let messShoppers = undefined;
+    if (messAssignment) {
+      const u1 = db.users.find(u => u.id === messAssignment.userId);
+      const u2 = db.users.find(u => u.id === messAssignment.member2Id);
+      messShoppers = {
+        member1Name: u1 ? u1.name : 'Mess Member',
+        member2Name: u2 ? u2.name : undefined,
+        budget: messAssignment.budget || messAssignment.allocatedCash || 0,
+        status: messAssignment.status,
+      };
+    }
+
     if (!assignment) {
       const response: BazaarDutyInfo = {
         hasDuty: false,
         date,
+        messShoppers,
       };
       return NextResponse.json(response);
     }

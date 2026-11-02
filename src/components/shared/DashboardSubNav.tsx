@@ -39,6 +39,7 @@ export default function DashboardSubNav() {
   // 2. MANAGER NAV LINKS
   const managerLinks = [
     { href: '/dashboard', label: 'Overview', icon: TrendingUp },
+    { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
     { href: '/dashboard/tickets', label: 'Tickets', icon: ClipboardList },
     { href: '/dashboard/meals-bazaar', label: 'Meals & Bazaar', icon: ChefHat },
     { href: '/dashboard/finances', label: 'Finances', icon: DollarSign },

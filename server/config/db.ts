@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import { MongoClient } from 'mongodb';
-import { User, MealMenu, MealRecord, Deposit, SystemSettings, BazaarAssignment, BazaarExpense, BazaarPair, WeeklyPayment, ContactMessage, SharedBill, MemberBillPayment, RefundRequest, MonthlySummary, MealToggleLog, AdminChangeRequest, EmergencyMealRequest } from '../../src/types';
+import { User, MealMenu, MealRecord, Deposit, SystemSettings, BazaarAssignment, BazaarExpense, BazaarPair, WeeklyPayment, ContactMessage, SharedBill, MemberBillPayment, RefundRequest, MonthlySummary, MealToggleLog, AdminChangeRequest, EmergencyMealRequest, DailyMealDay } from '../../src/types';
 
 export interface DatabaseSchema {
   users: (User & { passwordHash: string })[];
@@ -18,6 +18,7 @@ export interface DatabaseSchema {
   memberBillPayments: MemberBillPayment[];
   refundRequests: RefundRequest[];
   monthlySummaries: MonthlySummary[];
+  dailyMeals?: DailyMealDay[];
   mealToggleLog?: MealToggleLog[];
   adminChangeRequests?: AdminChangeRequest[];
   emergencyMealRequests?: EmergencyMealRequest[];
@@ -99,6 +100,7 @@ export function getInitialDb(): DatabaseSchema {
     memberBillPayments: [],
     refundRequests: [],
     monthlySummaries: [],
+    dailyMeals: [],
     mealToggleLog: [],
     adminChangeRequests: [],
     emergencyMealRequests: [],
@@ -121,6 +123,7 @@ export function getDb(): DatabaseSchema {
     const parsed = JSON.parse(data);
     memoryDb = {
       ...parsed,
+      dailyMeals: parsed.dailyMeals || [],
       mealToggleLog: parsed.mealToggleLog || [],
       adminChangeRequests: parsed.adminChangeRequests || [],
       emergencyMealRequests: parsed.emergencyMealRequests || [],
@@ -152,6 +155,7 @@ export async function ensureDbInit(): Promise<DatabaseSchema> {
       const memberBillPaymentsCol = db.collection('memberBillPayments');
       const refundRequestsCol = db.collection('refundRequests');
       const monthlySummariesCol = db.collection('monthlySummaries');
+      const dailyMealsCol = db.collection('dailyMeals');
       const mealToggleLogCol = db.collection('mealToggleLog');
       const adminChangeRequestsCol = db.collection('adminChangeRequests');
       const settingsCol = db.collection('settings');
@@ -181,6 +185,7 @@ export async function ensureDbInit(): Promise<DatabaseSchema> {
       const memberBillPayments = await memberBillPaymentsCol.find({}).toArray();
       const refundRequests = await refundRequestsCol.find({}).toArray();
       const monthlySummaries = await monthlySummariesCol.find({}).toArray();
+      const dailyMeals = await dailyMealsCol.find({}).toArray();
       const mealToggleLog = await mealToggleLogCol.find({}).toArray();
       const adminChangeRequests = await adminChangeRequestsCol.find({}).toArray();
 
@@ -221,6 +226,7 @@ export async function ensureDbInit(): Promise<DatabaseSchema> {
         memberBillPayments: memberBillPayments.map(formatDoc),
         refundRequests: refundRequests.map(formatDoc),
         monthlySummaries: monthlySummaries.map(formatDoc),
+        dailyMeals: dailyMeals.map(formatDoc),
         mealToggleLog: mealToggleLog.map(formatDoc),
         adminChangeRequests: adminChangeRequests.map(formatDoc),
         settings,
@@ -316,6 +322,7 @@ export async function saveDb(data: DatabaseSchema): Promise<void> {
       await syncCollection('memberBillPayments', data.memberBillPayments);
       await syncCollection('refundRequests', data.refundRequests);
       await syncCollection('monthlySummaries', data.monthlySummaries);
+      await syncCollection('dailyMeals', data.dailyMeals || []);
       await syncCollection('mealToggleLog', data.mealToggleLog || []);
       await syncCollection('adminChangeRequests', data.adminChangeRequests || []);
 

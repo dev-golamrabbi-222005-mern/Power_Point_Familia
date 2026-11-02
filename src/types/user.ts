@@ -36,7 +36,7 @@ export interface AdminChangeRequest {
   managerName: string;
   targetUserId: string;
   targetUserName: string;
-  type: 'edit_cost' | 'edit_meal' | 'edit_balance';
+  type: 'edit_cost' | 'edit_meal' | 'edit_balance' | 'meal_off_month';
   details: string;
   oldValue?: any;
   newValue?: any;

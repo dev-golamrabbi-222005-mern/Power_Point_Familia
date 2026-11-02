@@ -14,15 +14,32 @@ export async function GET(req: NextRequest) {
     if (user!.role === 'manager' || user!.role === 'admin') {
       const enriched = db.bazaarExpenses.map(e => {
         const u = db.users.find(usr => usr.id === e.userId);
-        return { ...e, userName: u ? u.name : 'Unknown' };
+        const assign = db.bazaarAssignments.find(a => a.id === e.assignmentId);
+        const partner = db.users.find(usr => usr.id === (assign?.userId === e.userId ? assign?.member2Id : assign?.userId));
+        return { 
+          ...e, 
+          userName: u ? u.name : 'Unknown',
+          partnerName: partner ? partner.name : undefined,
+        };
       });
       return NextResponse.json(enriched);
     } else {
+      // Members see expenses where they are shopper or pair partner
       const enriched = db.bazaarExpenses
-        .filter(e => e.userId === user!.id)
+        .filter(e => {
+          const assign = db.bazaarAssignments.find(a => a.id === e.assignmentId);
+          return e.userId === user!.id || assign?.userId === user!.id || assign?.member2Id === user!.id;
+        })
         .map(e => {
           const u = db.users.find(usr => usr.id === e.userId);
-          return { ...e, userName: u ? u.name : 'Unknown' };
+          const assign = db.bazaarAssignments.find(a => a.id === e.assignmentId);
+          const partnerId = assign?.userId === user!.id ? assign?.member2Id : assign?.userId;
+          const partner = db.users.find(usr => usr.id === partnerId);
+          return { 
+            ...e, 
+            userName: u ? u.name : 'Shopper',
+            partnerName: partner ? partner.name : undefined,
+          };
         });
       return NextResponse.json(enriched);
     }
@@ -87,7 +104,7 @@ export async function POST(req: NextRequest) {
     };
 
     db.bazaarExpenses.push(newExpense);
-    saveDb(db);
+    await saveDb(db);
 
     return NextResponse.json({
       expense: newExpense,
@@ -100,6 +117,63 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error('Submit bazaar expense error', error);
+    return NextResponse.json({ message: 'Internal server error.' }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const { error, user } = authenticate(req, ['member', 'manager', 'admin']);
+    if (error) return error;
+
+    const { id, items, totalCost, remarks, allocatedCash, returnedCash } = await req.json();
+
+    if (!id || !items || !Array.isArray(items)) {
+      return NextResponse.json({ message: 'id and items are required.' }, { status: 400 });
+    }
+
+    await ensureDbInit();
+    const db = getDb();
+
+    const expIndex = db.bazaarExpenses.findIndex(e => e.id === id);
+    if (expIndex === -1) {
+      return NextResponse.json({ message: 'Bazaar expense not found.' }, { status: 404 });
+    }
+
+    const expense = db.bazaarExpenses[expIndex];
+    if (expense.status === 'approved') {
+      return NextResponse.json({ message: 'Cannot edit an approved bazaar expense.' }, { status: 400 });
+    }
+
+    const assignment = db.bazaarAssignments.find(a => a.id === expense.assignmentId);
+    if (user!.role === 'member' && assignment?.userId !== user!.id && assignment?.member2Id !== user!.id && expense.userId !== user!.id) {
+      return NextResponse.json({ message: 'Unauthorized to edit this bazaar.' }, { status: 403 });
+    }
+
+    const calculatedTotal = items.reduce((sum: number, item: any) => sum + Number(item.cost || 0), 0);
+    const finalTotal = totalCost !== undefined ? Number(totalCost) : calculatedTotal;
+
+    expense.items = items;
+    expense.totalCost = finalTotal;
+    if (remarks !== undefined) expense.remarks = remarks;
+    if (allocatedCash !== undefined) expense.allocatedCash = Number(allocatedCash);
+    if (returnedCash !== undefined) expense.returnedCash = Number(returnedCash);
+    (expense as any).updatedAt = new Date().toISOString();
+
+    if (assignment) {
+      assignment.items = items;
+      if (allocatedCash !== undefined) assignment.allocatedCash = expense.allocatedCash;
+      if (returnedCash !== undefined) assignment.returnedCash = expense.returnedCash;
+    }
+
+    await saveDb(db);
+
+    return NextResponse.json({
+      expense,
+      message: 'Bazaar details updated successfully!',
+    });
+  } catch (error) {
+    console.error('Update bazaar expense error', error);
     return NextResponse.json({ message: 'Internal server error.' }, { status: 500 });
   }
 }

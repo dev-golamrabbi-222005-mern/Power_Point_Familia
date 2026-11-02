@@ -9,7 +9,9 @@ export interface Deposit {
   paymentMethod: string;
   transactionId: string;
   status: 'pending' | 'approved' | 'rejected';
-  type?: 'meal_cash' | 'utility' | 'weekly_payment' | 'refund' | 'other';
+  type?: 'meal_cash' | 'utility' | 'weekly_payment' | 'refund' | 'other' | 'fixed_cost';
+  utilityType?: FixedUtilityType;
+  month?: string;
   remarks?: string;
   userName?: string; // Hydrated for manager/admin display
   userEmail?: string;
@@ -87,6 +89,7 @@ export interface SystemSettings {
   currentPairIndex: number; // Index tracking which BazaarPair is up next
   financeVisibilityUntil?: string; // Manager can publish finance calculations for a short window
   financeVisibilityDurationMinutes?: number;
+  closedMealMonths?: string[]; // Months where full meal service is closed/off
 }
 
 export interface DashboardStats {
@@ -168,6 +171,8 @@ export interface MemberOverviewData {
   baseRate?: number;
   hasActiveCalculation?: boolean;
   today: string;
+  isMonthMealOff?: boolean;
+  firstBazaarDate?: string | null;
 }
 
 export interface CalendarActivityData {
@@ -175,6 +180,8 @@ export interface CalendarActivityData {
   dayName: string;
   bazaarCount: number;
   bazaarDetails: BazaarActivityDetail[];
+  assignments?: any[];
+  hasAssignment?: boolean;
   totalBazaarCost: number;
   mealSummary: MealSummary;
 }
@@ -203,6 +210,8 @@ export interface FinanceOverviewData {
   assignedPastDue?: number;
   isCalculationVisible: boolean;
   financeVisibilityUntil?: string;
+  isMonthMealOff?: boolean;
+  firstBazaarDate?: string | null;
   weeklyMealCashGuidance: {
     currentWeekNumber: number; // 1 to 4
     suggestedAmount: number; // 1000 for week 1, 500 for weeks 2-4
@@ -249,6 +258,7 @@ export interface ManagerOverviewData {
   baseRate?: number;
   hasActiveCalculation?: boolean;
   today: string;
+  todayDailyMeal?: any;
   fixedBills: FixedBillItem[];
   pastMonthComparison: PastMonthComparisonData[];
 }

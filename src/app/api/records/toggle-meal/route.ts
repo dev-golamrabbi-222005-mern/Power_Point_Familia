@@ -29,12 +29,31 @@ export async function POST(req: NextRequest) {
     await ensureDbInit();
     const db = getDb();
 
+    const targetMonth = date.slice(0, 7);
+    if (db.settings.closedMealMonths?.includes(targetMonth)) {
+      return NextResponse.json({
+        message: 'Meal service is closed for this month by admin approval.',
+      }, { status: 400 });
+    }
+
     const userId = user!.id;
     const { today, currentHour } = getDhakaTime();
     const requestDate = new Date(date + 'T00:00:00');
     const todayDate = new Date(today + 'T00:00:00');
     const daysAhead = Math.floor((requestDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
     const isToday = (date === today);
+
+    // Check if Manager has ALREADY locked this session for kitchen cooking
+    const existingDayMeal = db.dailyMeals?.find(d => d.date === date);
+    const session = mealType === 'lunch' ? existingDayMeal?.lunch : existingDayMeal?.dinner;
+    if (action === 'off' && session && session.isLocked && user!.role === 'member') {
+      return NextResponse.json({
+        message: `দুঃখিত! আপনার রিকোয়েস্ট পৌঁছানোর আগেই রান্নার চাল-ডাল চুলায় উঠে গেছে${session.menu ? ` (মেনু: ${session.menu})` : ''}। তাই মিলটি আর বন্ধ করা সম্ভব নয়।`,
+        isKitchenLocked: true,
+        menu: session.menu,
+        lockedAt: session.lockedAt,
+      }, { status: 400 });
+    }
 
     // Check cut-off time for today if attempting to turn OFF:
     // Lunch cut-off: 09:00 AM | Dinner cut-off: 03:00 PM (15:00)
@@ -156,9 +175,17 @@ export async function GET(req: NextRequest) {
     await ensureDbInit();
     const db = getDb();
 
+    const targetMonth = date.slice(0, 7);
+    if (db.settings.closedMealMonths?.includes(targetMonth)) {
+      return NextResponse.json({
+        message: 'Meal service is closed for this month by admin approval.',
+      }, { status: 400 });
+    }
+
     const userId = user!.id;
     const lunchRecord = db.records.find(r => r.userId === userId && r.date === date && r.mealType === 'lunch');
     const dinnerRecord = db.records.find(r => r.userId === userId && r.date === date && r.mealType === 'dinner');
+    const dayMeal = db.dailyMeals?.find(d => d.date === date);
 
     const { today, currentHour } = getDhakaTime();
     const isToday = (date === today);
@@ -170,7 +197,10 @@ export async function GET(req: NextRequest) {
       requestStatus: lunchRecord?.requestStatus || 'none',
       requestReason: lunchRecord?.requestReason,
       requestedAt: lunchRecord?.requestedAt,
-      isCutoffPassed: isToday && currentHour >= 9,
+      isCutoffPassed: (isToday && currentHour >= 9) || Boolean(dayMeal?.lunch?.isLocked),
+      isLocked: Boolean(dayMeal?.lunch?.isLocked),
+      menu: dayMeal?.lunch?.menu || '',
+      lockedAt: dayMeal?.lunch?.lockedAt || null,
     };
 
     const formattedDinner = {
@@ -180,7 +210,10 @@ export async function GET(req: NextRequest) {
       requestStatus: dinnerRecord?.requestStatus || 'none',
       requestReason: dinnerRecord?.requestReason,
       requestedAt: dinnerRecord?.requestedAt,
-      isCutoffPassed: isToday && currentHour >= 15,
+      isCutoffPassed: (isToday && currentHour >= 15) || Boolean(dayMeal?.dinner?.isLocked),
+      isLocked: Boolean(dayMeal?.dinner?.isLocked),
+      menu: dayMeal?.dinner?.menu || '',
+      lockedAt: dayMeal?.dinner?.lockedAt || null,
     };
 
     return NextResponse.json({

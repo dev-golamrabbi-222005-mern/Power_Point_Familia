@@ -15,6 +15,7 @@ import {
   Line,
 } from 'recharts';
 import { ManagerOverviewData, FixedBillItem } from '@/src/types';
+import KitchenLockCard from './KitchenLockCard';
 
 interface ManagerOverviewTabProps {
   token: string;
@@ -25,27 +26,27 @@ export default function ManagerOverviewTab({ token, onError }: ManagerOverviewTa
   const [overview, setOverview] = useState<ManagerOverviewData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch('/api/dashboard/manager-overview', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setOverview(data);
-        } else {
-          onError?.('Failed to load manager overview data');
-        }
-      } catch (error) {
-        console.error('Error fetching manager overview data', error);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/dashboard/manager-overview', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOverview(data);
+      } else {
         onError?.('Failed to load manager overview data');
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching manager overview data', error);
+      onError?.('Failed to load manager overview data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
   }, [token, onError]);
 
@@ -176,6 +177,9 @@ export default function ManagerOverviewTab({ token, onError }: ManagerOverviewTa
           </p>
         </div>
       </div>
+
+      {/* === KITCHEN HEADCOUNT & MENU LOCK SECTION === */}
+      <KitchenLockCard token={token} onRefresh={fetchData} />
 
       {/* === FIXED BILLS SECTION === */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 md:p-6 shadow-sm">

@@ -23,7 +23,7 @@ interface OverviewTabProps {
 }
 
 export default function OverviewTab({ token, onError }: OverviewTabProps) {
-  const { todayBazaarAssignment, setIsLiveBazaarOpen } = useDashboard();
+  const { todayBazaarAssignment, setIsLiveBazaarOpen, liveMealRate } = useDashboard();
   const [overview, setOverview] = useState<MemberOverviewData | null>(null);
   const [chartData, setChartData] = useState<{
     weekly: MealCostData[];
@@ -70,7 +70,7 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
     };
 
     fetchData();
-  }, [token, onError]);
+  }, [token, liveMealRate, onError]);
 
   if (loading) {
     return (
@@ -85,6 +85,33 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Month Meal Off Banner */}
+      {overview?.isMonthMealOff && (
+        <div className="p-4 bg-red-500/10 border-2 border-red-500/30 rounded-2xl flex items-center gap-3">
+          <div className="p-2.5 bg-red-500/20 text-red-500 rounded-xl">
+            <Utensils className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-sm sm:text-base text-red-600 dark:text-red-400">
+              Meal Closed for This Month (এই মাসের জন্য মিল সার্ভিস বন্ধ রয়েছে)
+            </h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
+              Admin has approved closing meal operations for this month. Only House Rent & Electricity fixed costs apply.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* First Bazaar Pending Notice */}
+      {!overview?.isMonthMealOff && !overview?.firstBazaarDate && (
+        <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+          <span>⏳</span>
+          <span>
+            <strong>Waiting for first bazaar:</strong> চলতি মাসে এখনো কোনো বাজার সম্পন্ন হয়নি। প্রথম বাজার সম্পন্ন হওয়ার পর মিল কাউন্টডাউন শুরু হবে।
+          </span>
+        </div>
+      )}
+
       {/* === SUMMARY CARDS === */}
       <div className="grid grid-cols-2 gap-2 md:gap-4 md:grid-cols-3 lg:grid-cols-5">
         {/* My Total Meal */}
@@ -96,9 +123,11 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
             <Utensils className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-blue-900 dark:text-blue-100">
-            {overview?.myTotalMeals || 0}
+            {overview?.isMonthMealOff ? 0 : (overview?.myTotalMeals || 0)}
           </p>
-          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">meals</p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+            {overview?.isMonthMealOff ? 'closed' : 'meals'}
+          </p>
         </div>
 
         {/* Mess Total Meal */}
@@ -110,9 +139,11 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
             <Utensils className="w-4 h-4 md:w-5 md:h-5 text-purple-600 dark:text-purple-400" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-purple-900 dark:text-purple-100">
-            {overview?.messTotalMeals || 0}
+            {overview?.isMonthMealOff ? 0 : (overview?.messTotalMeals || 0)}
           </p>
-          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">meals</p>
+          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+            {overview?.isMonthMealOff ? 'closed' : 'meals'}
+          </p>
         </div>
 
         {/* Today's My Meal */}
@@ -124,10 +155,10 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
             <Utensils className="w-4 h-4 md:w-5 md:h-5 text-green-600 dark:text-green-400" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-green-900 dark:text-green-100">
-            {overview?.todayMyMeals || 0}
+            {overview?.isMonthMealOff ? 0 : (overview?.todayMyMeals || 0)}
           </p>
           <p className="text-xs font-medium text-green-700 dark:text-green-300 mt-1">
-            Lunch: {overview?.todayMyLunch || 0} | Dinner: {overview?.todayMyDinner || 0}
+            {overview?.isMonthMealOff ? 'Service Off' : `Lunch: ${overview?.todayMyLunch || 0} | Dinner: ${overview?.todayMyDinner || 0}`}
           </p>
         </div>
 
@@ -140,10 +171,10 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
             <Utensils className="w-4 h-4 md:w-5 md:h-5 text-orange-600 dark:text-orange-400" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-orange-900 dark:text-orange-100">
-            {overview?.todayMessMeals || 0}
+            {overview?.isMonthMealOff ? 0 : (overview?.todayMessMeals || 0)}
           </p>
           <p className="text-xs font-medium text-orange-700 dark:text-orange-300 mt-1">
-            Lunch: {overview?.todayMessLunch || 0} | Dinner: {overview?.todayMessDinner || 0}
+            {overview?.isMonthMealOff ? 'Service Off' : `Lunch: ${overview?.todayMessLunch || 0} | Dinner: ${overview?.todayMessDinner || 0}`}
           </p>
         </div>
 
@@ -156,18 +187,24 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
             <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-red-600 dark:text-red-400" />
           </div>
           <p className="text-2xl md:text-3xl font-bold text-red-900 dark:text-red-100">
-            ৳{overview?.liveMealRate ? overview.liveMealRate.toFixed(2) : '0.00'}
+            {overview?.isMonthMealOff
+              ? 'N/A'
+              : `৳${overview?.liveMealRate ? overview.liveMealRate.toFixed(2) : '0.00'}`}
           </p>
           <p className="text-[11px] text-red-600 dark:text-red-400 mt-1 leading-tight">
-            {overview?.liveMealRate && overview.liveMealRate > 0
+            {overview?.isMonthMealOff
+              ? 'Meal closed for this month'
+              : !overview?.firstBazaarDate
+              ? 'Waiting for first bazaar'
+              : overview?.liveMealRate && overview.liveMealRate > 0
               ? 'per meal (Calculated live)'
-              : `No meals logged yet (Est. Base: ৳${overview?.baseRate || 45})`}
+              : `Est. Base: ৳${overview?.baseRate || 45}`}
           </p>
         </div>
       </div>
 
       {/* === UNLOCKED LIVE BAZAAR DUTY HERO CARD === */}
-      {todayBazaarAssignment && (
+      {!overview?.isMonthMealOff && todayBazaarAssignment && (
         <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-amber-500/10 border-2 border-emerald-500/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-xl shadow-md">

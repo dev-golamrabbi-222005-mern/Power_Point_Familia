@@ -77,4 +77,10 @@ export interface BazaarDutyInfo {
     items?: { name: string; cost: number }[];
     submittedAt?: string;
   };
+  messShoppers?: {
+    member1Name: string;
+    member2Name?: string;
+    budget?: number;
+    status?: string;
+  };
 }

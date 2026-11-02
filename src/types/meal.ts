@@ -83,3 +83,34 @@ export interface EmergencyMealRequest {
   resolvedBy?: string;
 }
 
+export interface MealSessionMember {
+  userId: string;
+  name: string;
+  count: number;
+}
+
+export interface MealSessionOffMember {
+  userId: string;
+  name: string;
+  reason?: string;
+}
+
+export interface MealSessionDetail {
+  menu: string;
+  isLocked: boolean;
+  lockedAt: string | null;
+  lockedBy: string | null;
+  totalCount: number;
+  activeMembers: MealSessionMember[];
+  offMembers: MealSessionOffMember[];
+}
+
+export interface DailyMealDay {
+  id: string; // e.g. "dm-2026-11-02"
+  date: string; // YYYY-MM-DD
+  lunch: MealSessionDetail;
+  dinner: MealSessionDetail;
+  updatedAt?: string;
+}
+
+

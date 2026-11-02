@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { ShoppingBag, Plus, Trash2, Check, ArrowRight, DollarSign, AlertCircle } from 'lucide-react';
 import { BazaarItem } from '@/src/types';
+import { showSuccessAlert, showErrorAlert } from '@/src/lib/alerts';
 
 interface LiveBazaarShopperProps {
   assignmentId: string;
@@ -98,9 +99,14 @@ export default function LiveBazaarShopperView({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Submission failed');
+      await showSuccessAlert(
+        'বাজার সফলভাবে জমা হয়েছে!',
+        'Bazaar details submitted successfully! Awaiting manager reconciliation.'
+      );
       if (onSubmitted) onSubmitted();
     } catch (err: any) {
       setError(err.message || 'Network error');
+      showErrorAlert('Error', err.message || 'Network error');
     } finally {
       setLoading(false);
     }

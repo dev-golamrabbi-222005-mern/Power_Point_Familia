@@ -28,21 +28,25 @@ export async function POST(req: NextRequest) {
 
     const { targetUserId, type, details, oldValue, newValue } = await req.json();
 
-    if (!targetUserId || !type || !details) {
-      return NextResponse.json({ message: 'targetUserId, type, and details are required.' }, { status: 400 });
+    if (!type || !details) {
+      return NextResponse.json({ message: 'type and details are required.' }, { status: 400 });
+    }
+
+    if (type !== 'meal_off_month' && !targetUserId) {
+      return NextResponse.json({ message: 'targetUserId is required.' }, { status: 400 });
     }
 
     await ensureDbInit();
     const db = getDb();
 
-    const targetUser = db.users.find(u => u.id === targetUserId);
-    const targetUserName = targetUser?.name || 'Member';
+    const targetUser = targetUserId ? db.users.find(u => u.id === targetUserId) : null;
+    const targetUserName = targetUser?.name || (type === 'meal_off_month' ? 'Entire Mess (Total Meal Off)' : 'Member');
 
     const newRequest: AdminChangeRequest = {
       id: `req-${Date.now()}`,
       managerId: user!.id,
       managerName: user!.name,
-      targetUserId,
+      targetUserId: targetUserId || 'mess_all',
       targetUserName,
       type,
       details,
@@ -54,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     if (!db.adminChangeRequests) db.adminChangeRequests = [];
     db.adminChangeRequests.push(newRequest);
-    saveDb(db);
+    await saveDb(db);
 
     return NextResponse.json({
       message: 'Waiting for Admin approval for making significant change.',
@@ -93,18 +97,28 @@ export async function PUT(req: NextRequest) {
 
     // If approved, apply the requested changes to DB
     if (action === 'approved') {
-      const targetUser = db.users.find(u => u.id === item.targetUserId);
-      if (targetUser && item.newValue) {
-        if (item.newValue.name) targetUser.name = item.newValue.name;
-        if (item.newValue.phone) targetUser.phone = item.newValue.phone;
-        if (item.newValue.role && ['member', 'manager', 'user'].includes(item.newValue.role)) {
-          targetUser.role = item.newValue.role;
+      if (item.type === 'meal_off_month') {
+        const targetMonth = item.newValue?.month || item.details?.slice(0, 7) || new Date().toISOString().slice(0, 7);
+        if (targetMonth) {
+          if (!db.settings.closedMealMonths) db.settings.closedMealMonths = [];
+          if (!db.settings.closedMealMonths.includes(targetMonth)) {
+            db.settings.closedMealMonths.push(targetMonth);
+          }
         }
-        if (item.newValue.status) targetUser.status = item.newValue.status;
+      } else {
+        const targetUser = db.users.find(u => u.id === item.targetUserId);
+        if (targetUser && item.newValue) {
+          if (item.newValue.name) targetUser.name = item.newValue.name;
+          if (item.newValue.phone) targetUser.phone = item.newValue.phone;
+          if (item.newValue.role && ['member', 'manager', 'user'].includes(item.newValue.role)) {
+            targetUser.role = item.newValue.role;
+          }
+          if (item.newValue.status) targetUser.status = item.newValue.status;
+        }
       }
     }
 
-    saveDb(db);
+    await saveDb(db);
 
     return NextResponse.json({
       message: `Change request successfully ${action}.`,

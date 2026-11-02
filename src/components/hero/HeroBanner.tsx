@@ -45,13 +45,6 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
               Get Started
               <ArrowRight className="w-5 h-5" />
             </button>
-            <button
-              id="btn-login-hero"
-              onClick={onLoginClick}
-              className="px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 font-medium border border-zinc-800 rounded-xl shadow-sm transition-all duration-150 cursor-pointer"
-            >
-              Sign In
-            </button>
           </div>
 
           {/* Quick stats banner */}

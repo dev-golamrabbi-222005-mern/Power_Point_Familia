@@ -256,5 +256,55 @@
     "financeVisibilityDurationMinutes": 60,
     "_id": "global_settings",
     "totalCashInHand": 0
-  }
+  },
+  "dailyMeals": [
+    {
+      "id": "dm-2026-11-02",
+      "date": "2026-11-02",
+      "lunch": {
+        "menu": "মুরগি + মসুর ডাল + আলুভর্তা",
+        "isLocked": true,
+        "lockedAt": "2026-11-02T15:45:39.274Z",
+        "lockedBy": "user-rabbi-superadmin",
+        "totalCount": 5,
+        "activeMembers": [
+          {
+            "userId": "user-developer",
+            "name": "Rabbi Developer",
+            "count": 1
+          },
+          {
+            "userId": "user-admin",
+            "name": "System Admin",
+            "count": 1
+          },
+          {
+            "userId": "user-member",
+            "name": "Karim Member",
+            "count": 1
+          },
+          {
+            "userId": "user-manager",
+            "name": "Rahim Manager",
+            "count": 1
+          },
+          {
+            "userId": "101348681467856942733",
+            "name": "Md. Golam Rabbi",
+            "count": 1
+          }
+        ],
+        "offMembers": []
+      },
+      "dinner": {
+        "menu": "",
+        "isLocked": false,
+        "lockedAt": null,
+        "lockedBy": null,
+        "totalCount": 0,
+        "activeMembers": [],
+        "offMembers": []
+      }
+    }
+  ]
 }

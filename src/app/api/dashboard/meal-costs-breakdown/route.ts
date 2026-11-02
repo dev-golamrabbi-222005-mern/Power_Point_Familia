@@ -38,14 +38,30 @@ export async function GET(req: NextRequest) {
     const userId = user!.id;
     const today = new Date();
 
+    const currentMonth = today.toISOString().slice(0, 7);
+    const isMonthMealOff = Boolean(db.settings.closedMealMonths?.includes(currentMonth));
+
+    const currentMonthBazaars = db.bazaarExpenses.filter(
+      e => e.date.startsWith(currentMonth) && (e.status === 'approved' || e.status === 'pending')
+    );
+    const firstBazaarDate = currentMonthBazaars.length > 0
+      ? currentMonthBazaars.map(e => e.date).sort()[0]
+      : null;
+
     // Calculate LIVE meal rate
-    const allMealsCount = db.records.reduce((sum, r) => sum + r.count, 0);
+    const activeRecords = db.records.filter(r => {
+      if (!r.date.startsWith(currentMonth)) return false;
+      if (!firstBazaarDate) return false;
+      return r.date >= firstBazaarDate;
+    });
+
+    const allMealsCount = isMonthMealOff ? 0 : activeRecords.reduce((sum, r) => sum + r.count, 0);
     const totalBazaarExpenses = db.bazaarExpenses
-      .filter(e => e.status === 'approved')
+      .filter(e => (e.status === 'approved' || e.status === 'pending') && e.date.startsWith(currentMonth))
       .reduce((sum, e) => sum + e.totalCost, 0);
     
     const baseRate = db.settings?.mealRate || 45;
-    const liveMealRate = allMealsCount > 0 && totalBazaarExpenses > 0
+    const liveMealRate = (!isMonthMealOff && allMealsCount > 0 && totalBazaarExpenses > 0)
       ? Math.round((totalBazaarExpenses / allMealsCount) * 100) / 100
       : baseRate;
 

@@ -173,6 +173,21 @@ export default function FinanceTab({ token, onError }: FinanceTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Meal Closed Banner */}
+      {data?.isMonthMealOff && (
+        <div className="p-4 bg-amber-500/10 border-2 border-amber-500/30 rounded-2xl flex items-center gap-3">
+          <AlertCircle className="w-6 h-6 text-amber-500 shrink-0" />
+          <div>
+            <h3 className="font-extrabold text-sm text-amber-400">
+              Meal Closed for This Month (এই মাসের জন্য মিল সার্ভিস বন্ধ রয়েছে)
+            </h3>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Only House Rent and Electricity apply. WiFi, Gas, and Servant fees are excluded (৳0) for this month.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* === TOP 4 CARDS GRID === */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Assigned Fixed Costs */}
@@ -245,13 +260,19 @@ export default function FinanceTab({ token, onError }: FinanceTabProps) {
             </p>
           </div>
 
-          <button
-            onClick={openMealCashModal}
-            className="mt-3 w-full bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-bold text-xs md:text-sm py-2.5 px-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Add Meal Cash</span>
-          </button>
+          {data?.isMonthMealOff ? (
+            <div className="mt-3 p-2 bg-amber-500/10 text-amber-400 text-xs font-bold rounded-lg text-center border border-amber-500/20">
+              Meal Closed This Month
+            </div>
+          ) : (
+            <button
+              onClick={openMealCashModal}
+              className="mt-3 w-full bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-bold text-xs md:text-sm py-2.5 px-4 rounded-lg shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Add Meal Cash</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -308,7 +329,11 @@ export default function FinanceTab({ token, onError }: FinanceTabProps) {
                 </div>
                 
                 {/* Status Badge */}
-                {item.status === 'paid' ? (
+                {item.share === 0 && (item.type === 'servant_fee' || item.type === 'wifi' || item.type === 'gas') ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 bg-zinc-500/10 text-zinc-400 rounded-full border border-zinc-500/20">
+                    Excluded (Meal Off)
+                  </span>
+                ) : item.status === 'paid' ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 rounded-full border border-emerald-500/30">
                     <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                     Paid
@@ -322,7 +347,7 @@ export default function FinanceTab({ token, onError }: FinanceTabProps) {
               </div>
 
               {/* Action Button */}
-              {item.status !== 'paid' && (
+              {item.status !== 'paid' && item.share > 0 && (
                 <button
                   onClick={() => openUtilityModal(item)}
                   className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"

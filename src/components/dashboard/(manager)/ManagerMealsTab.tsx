@@ -22,7 +22,8 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
-  FileText
+  FileText,
+  Wallet
 } from 'lucide-react';
 import { BazaarAssignment, BazaarExpense, MealMenu, User, BazaarPair } from '@/src/types';
 import { showSuccessAlert, showErrorAlert, showWarningAlert } from '@/src/lib/alerts';
@@ -267,7 +268,7 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
   return (
     <div className="space-y-6">
       {/* === KPIS HEADER GRID === */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* KPI 1: Today's Total Meals with Breakdown */}
         <div className="bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent dark:from-emerald-950/30 dark:to-zinc-900 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
           <div className="flex items-center justify-between mb-2">
@@ -317,7 +318,23 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
           </p>
         </div>
 
-        {/* KPI 4: Force Cancel Action Card */}
+        {/* KPI 4: Total Meal Cash Collected */}
+        <div className="bg-gradient-to-br from-teal-500/10 via-emerald-500/5 to-transparent dark:from-teal-950/30 dark:to-zinc-900 p-4 rounded-xl border border-teal-200 dark:border-teal-800/60 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300">
+              Total Meal Cash
+            </p>
+            <Wallet className="w-5 h-5 text-teal-500" />
+          </div>
+          <p className="text-2xl md:text-3xl font-extrabold text-zinc-900 dark:text-white font-mono">
+            ৳{mealKpis.totalMealCashCollected}
+          </p>
+          <p className="text-xs text-teal-600 dark:text-teal-400 font-semibold mt-1">
+            Approved member meal cash
+          </p>
+        </div>
+
+        {/* KPI 5: Force Cancel Action Card */}
         <div className="bg-gradient-to-br from-red-500/10 via-rose-500/5 to-transparent dark:from-red-950/30 dark:to-zinc-900 p-4 rounded-xl border border-red-200 dark:border-red-800/60 shadow-sm flex flex-col justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-red-700 dark:text-red-300 mb-1">

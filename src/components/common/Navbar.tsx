@@ -10,9 +10,7 @@ import {
   LogIn,
   UserPlus,
   LogOut,
-  Shield,
   ChevronDown,
-  UserCheck,
   Settings,
 } from "lucide-react";
 

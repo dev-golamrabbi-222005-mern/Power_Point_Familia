@@ -15,11 +15,20 @@ export async function GET(req: NextRequest) {
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
     const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-    // 1. Calculate Approved Meal Cash Added this month by the user
+    // Helper to determine if a deposit is for fixed costs vs meal cash
+    const isFixedCostDeposit = (d: any) =>
+      d.type === 'fixed_cost' ||
+      Boolean(d.utilityType) ||
+      /rent|vara|electricity|current|wifi|gas|servant|fixed/i.test(d.remarks || '');
+
+    // Check if the current month has total meal service closed by admin
+    const isMonthMealOff = Boolean(db.settings.closedMealMonths?.includes(currentMonth));
+
+    // 1. Calculate Approved Meal Cash Added this month by the user (strictly excluding fixed costs)
     const memberApprovedDeposits = db.deposits.filter(
-      d => d.userId === userId && d.status === 'approved' && d.date.startsWith(currentMonth)
+      d => d.userId === userId && d.status === 'approved' && d.date.startsWith(currentMonth) && !isFixedCostDeposit(d)
     );
-    const mealCashAdded = memberApprovedDeposits.reduce((sum, d) => sum + d.amount, 0);
+    const mealCashAdded = isMonthMealOff ? 0 : memberApprovedDeposits.reduce((sum, d) => sum + d.amount, 0);
 
     // 2. Fixed Expenses (Rent, Electricity, WiFi, Gas, Servant Fee)
     const approvedMembers = db.users.filter(u => u.status === 'approved');
@@ -53,6 +62,15 @@ export async function GET(req: NextRequest) {
         if (type === 'servant_fee' && assignedFixed.servant !== undefined) share = assignedFixed.servant;
       }
 
+      // If this month has Total Meal Off:
+      // Only Basha Vara and Electricity apply!
+      // Servant Fee, WiFi, and Gas are 0 / excluded!
+      if (isMonthMealOff) {
+        if (type === 'servant_fee' || type === 'wifi' || type === 'gas') {
+          share = 0;
+        }
+      }
+
       // Find user payment for this bill
       const payment = db.memberBillPayments.find(
         p => p.userId === userId && p.month === currentMonth && p.type === type
@@ -60,7 +78,7 @@ export async function GET(req: NextRequest) {
       const paid = payment ? payment.amount : 0;
       const isPaid = paid >= share && share > 0;
 
-      if (isPaid) {
+      if (isPaid || (share === 0 && paid > 0)) {
         totalFixedCostPaid += paid;
       }
 
@@ -69,26 +87,41 @@ export async function GET(req: NextRequest) {
         label,
         share,
         paid,
-        status: isPaid ? 'paid' : 'pending',
+        status: (share === 0 && paid === 0) ? 'paid' : (isPaid ? 'paid' : 'pending'),
         dueDate: sharedBill?.dueDate || `${currentMonth}-10`,
         paymentId: payment?.id,
       };
     });
 
-    // 3. Actual Meal Cost Calculation
-    const userRecords = db.records.filter(r => r.userId === userId && r.date.startsWith(currentMonth));
-    const myTotalMeals = userRecords.reduce((sum, r) => sum + (r.count || 0), 0);
+    // 3. Earliest bazaar in current month — meal countdown only begins once first bazaar is held!
+    const currentMonthBazaars = db.bazaarExpenses.filter(
+      e => e.date.startsWith(currentMonth) && (e.status === 'approved' || e.status === 'pending')
+    );
+    const firstBazaarDate = currentMonthBazaars.length > 0
+      ? currentMonthBazaars.map(e => e.date).sort()[0]
+      : null;
+
+    // Actual Meal Cost Calculation
+    const userRecords = db.records.filter(r => {
+      if (!r.date.startsWith(currentMonth)) return false;
+      if (!firstBazaarDate) return false; // Meal countdown hasn't started yet!
+      return r.date >= firstBazaarDate && r.userId === userId;
+    });
+    const myTotalMeals = isMonthMealOff ? 0 : userRecords.reduce((sum, r) => sum + (r.count || 0), 0);
 
     // Calculate total mess expenses and meals for live meal rate
     const totalMessBazaar = db.bazaarExpenses
-      .filter(e => e.status === 'approved' && e.date.startsWith(currentMonth))
+      .filter(e => (e.status === 'approved' || e.status === 'pending') && e.date.startsWith(currentMonth))
       .reduce((sum, e) => sum + e.totalCost, 0);
 
-    const totalMessMeals = db.records
-      .filter(r => r.date.startsWith(currentMonth))
-      .reduce((sum, r) => sum + (r.count || 0), 0);
+    const messRecords = db.records.filter(r => {
+      if (!r.date.startsWith(currentMonth)) return false;
+      if (!firstBazaarDate) return false;
+      return r.date >= firstBazaarDate;
+    });
+    const totalMessMeals = isMonthMealOff ? 0 : messRecords.reduce((sum, r) => sum + (r.count || 0), 0);
 
-    const liveMealRate = (totalMessMeals > 0 && totalMessBazaar > 0)
+    const liveMealRate = (!isMonthMealOff && totalMessMeals > 0 && totalMessBazaar > 0)
       ? Math.round((totalMessBazaar / totalMessMeals) * 100) / 100 
       : 0;
     const baseRate = db.settings.mealRate || 45;
@@ -129,6 +162,8 @@ export async function GET(req: NextRequest) {
       assignedPastDue,
       isCalculationVisible,
       financeVisibilityUntil: db.settings.financeVisibilityUntil,
+      isMonthMealOff,
+      firstBazaarDate,
       weeklyMealCashGuidance: {
         currentWeekNumber,
         suggestedAmount,

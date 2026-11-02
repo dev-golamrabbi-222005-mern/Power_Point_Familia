@@ -163,6 +163,9 @@ export default function ManagerFinanceTab({
         fetch("/api/utilities/pay", {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch("/api/settings", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
       if (!membersRes.ok) throw new Error("Failed to load members");
@@ -174,9 +177,14 @@ export default function ManagerFinanceTab({
       const expenses: any[] = expensesRes.ok ? await expensesRes.json() : [];
       const utilitiesData = billsRes.ok ? await billsRes.json() : { bills: [] };
       const billPayments: any[] = paymentsRes.ok ? await paymentsRes.json() : [];
+      const settingsData = await statsRes.json(); // settings can also be fetched
 
       const currentMonth = new Date().toISOString().split("T")[0].slice(0, 7);
       const todayObj = new Date();
+
+      const settingsRes = await fetch("/api/settings", { headers: { Authorization: `Bearer ${token}` } });
+      const settingsObj = settingsRes.ok ? await settingsRes.json() : {};
+      const isMonthMealOff = Boolean(settingsObj?.closedMealMonths?.includes(currentMonth));
 
       // 1. Mess Meal Cost (Approved Bazaar Expenses)
       const approvedExpenses = expenses.filter(
@@ -217,7 +225,10 @@ export default function ManagerFinanceTab({
         // Fixed costs share & paid
         let assignedTotal: number | undefined = undefined;
         if (member.fixedCosts) {
-          if (typeof member.fixedCosts.customFixedTotal === 'number' && member.fixedCosts.customFixedTotal > 0) {
+          if (isMonthMealOff) {
+            // During Meal-Off month: Only Rent and Electricity apply! WiFi, Gas, Servant are 0!
+            assignedTotal = Number(member.fixedCosts.rent || 0) + Number(member.fixedCosts.electricity || 0);
+          } else if (typeof member.fixedCosts.customFixedTotal === 'number' && member.fixedCosts.customFixedTotal > 0) {
             assignedTotal = member.fixedCosts.customFixedTotal;
           } else {
             const sumIndividual =
@@ -234,16 +245,16 @@ export default function ManagerFinanceTab({
           ? assignedTotal
           : Math.round(totalFixedMessCost / memberCount);
 
+        const isFixedDeposit = (d: any) =>
+          d.type === "fixed_cost" ||
+          Boolean(d.utilityType) ||
+          /rent|vara|electricity|current|wifi|gas|servant|fixed/i.test(d.remarks || "");
+
         const depositFixedPayments = deposits.filter(
           (d) =>
             d.userId === member.id &&
             d.status === "approved" &&
-            (d.type === "fixed_cost" ||
-             d.remarks?.toLowerCase().includes("fixed") ||
-             d.remarks?.toLowerCase().includes("basha vara") ||
-             d.remarks?.toLowerCase().includes("rent") ||
-             d.remarks?.toLowerCase().includes("bill") ||
-             d.remarks?.toLowerCase().includes("utility"))
+            isFixedDeposit(d)
         );
         const depositFixedPaid = depositFixedPayments.reduce((sum, d) => sum + (d.amount || 0), 0);
 
@@ -259,16 +270,15 @@ export default function ManagerFinanceTab({
               ? "partial"
               : "unpaid";
 
-        // Meal Cash Deposited
+        // Meal Cash Deposited (strictly excluding fixed costs)
         const memberMealCash = deposits
           .filter(
             (d) =>
               d.userId === member.id &&
               d.status === "approved" &&
-              d.type !== "fixed_cost" &&
-              !d.remarks?.toLowerCase().includes("fixed"),
+              !isFixedDeposit(d),
           )
-          .reduce((sum, d) => sum + d.amount, 0);
+          .reduce((sum, d) => sum + (d.amount || 0), 0);
 
         // Meals Eaten
         const memberMeals = records

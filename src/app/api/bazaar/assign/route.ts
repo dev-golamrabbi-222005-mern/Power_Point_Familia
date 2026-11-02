@@ -61,6 +61,14 @@ export async function POST(req: NextRequest) {
     await ensureDbInit();
     const db = getDb();
 
+    const targetMonth = date.slice(0, 7);
+    if (db.settings.closedMealMonths?.includes(targetMonth)) {
+      return NextResponse.json(
+        { message: 'Cannot assign bazaar. Meal service is closed for this month by admin approval.' },
+        { status: 400 }
+      );
+    }
+
     const cash = Number(allocatedCash ?? budget ?? 0);
     const parsedItems = Array.isArray(items) && items.length > 0
       ? items

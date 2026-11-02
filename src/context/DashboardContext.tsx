@@ -149,7 +149,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         const assigned = assignments.find(
           a => (a.userId === user.id || a.member2Id === user.id) &&
                a.date === todayStr &&
-               (a.status === 'pending' || a.status === 'submitted')
+               a.status === 'pending'
         );
         setTodayBazaarAssignment(assigned || null);
       }

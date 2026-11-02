@@ -30,6 +30,18 @@ export async function POST(req: NextRequest) {
     const db = getDb();
     const userId = user!.id;
 
+    // Check if kitchen headcount is already locked
+    const existingDayMeal = db.dailyMeals?.find(d => d.date === date);
+    const session = mealType === 'lunch' ? existingDayMeal?.lunch : existingDayMeal?.dinner;
+    if (session && session.isLocked && user!.role === 'member') {
+      return NextResponse.json({
+        message: `দুঃখিত! আপনার রিকোয়েস্ট পৌঁছানোর আগেই রান্নার চাল-ডাল চুলায় উঠে গেছে${session.menu ? ` (মেনু: ${session.menu})` : ''}। তাই জরুরি মিল অফের আবেদন নেওয়া সম্ভব নয়।`,
+        isKitchenLocked: true,
+        menu: session.menu,
+        lockedAt: session.lockedAt,
+      }, { status: 400 });
+    }
+
     let record = db.records.find(
       r => r.userId === userId && r.date === date && r.mealType === mealType
     );

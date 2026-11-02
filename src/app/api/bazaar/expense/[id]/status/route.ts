@@ -69,7 +69,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           const oldIndex = db.settings.currentPairIndex;
           db.settings.currentPairIndex = (oldIndex + 1) % db.bazaarPairs.length;
           
-          saveDb(db);
+          await saveDb(db);
 
           const nextPair = db.bazaarPairs[db.settings.currentPairIndex];
           const m1 = db.users.find(u => u.id === nextPair.member1Id);
@@ -85,7 +85,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }
     }
 
-    saveDb(db);
+    await saveDb(db);
 
     return NextResponse.json({
       expense: db.bazaarExpenses[expenseIndex],

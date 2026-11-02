@@ -47,14 +47,41 @@ export async function GET(req: NextRequest) {
     await ensureDbInit();
     const db = getDb();
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    const currentMonth = today.toISOString().slice(0, 7);
+    const { today: todayDhaka } = (await import('@/src/lib/utils')).getDhakaTime();
+    const todayStr = todayDhaka;
+    const currentMonth = todayStr.slice(0, 7);
 
     const baseRate = db.settings?.mealRate || 45;
+    if (!db.dailyMeals) db.dailyMeals = [];
 
-    const allMealsCount = db.records.reduce((sum, r) => sum + r.count, 0);
+    // 1. Calculate All Mess Meals for current month using dailyMeals + records fallback
+    let messTotalMealsMonth = 0;
+    const currentMonthDays = db.dailyMeals.filter(d => d.date.startsWith(currentMonth));
+    const processedSessionKeys = new Set<string>();
+
+    for (const day of currentMonthDays) {
+      if (day.lunch?.isLocked) {
+        processedSessionKeys.add(`${day.date}_lunch`);
+        messTotalMealsMonth += day.lunch.totalCount || 0;
+      }
+      if (day.dinner?.isLocked) {
+        processedSessionKeys.add(`${day.date}_dinner`);
+        messTotalMealsMonth += day.dinner.totalCount || 0;
+      }
+    }
+
+    for (const r of db.records) {
+      if (r.date.startsWith(currentMonth) && r.count > 0) {
+        const key = `${r.date}_${r.mealType}`;
+        if (!processedSessionKeys.has(key)) {
+          messTotalMealsMonth += r.count;
+        }
+      }
+    }
+
+    const allMealsCount = messTotalMealsMonth;
     const totalBazaarExpenses = db.bazaarExpenses
-      .filter(e => e.status === 'approved')
+      .filter(e => e.status === 'approved' && e.date.startsWith(currentMonth))
       .reduce((sum, e) => sum + e.totalCost, 0);
 
     const liveMealRate = allMealsCount > 0 && totalBazaarExpenses > 0
@@ -65,17 +92,33 @@ export async function GET(req: NextRequest) {
     const calculationRate = liveMealRate > 0 ? liveMealRate : baseRate;
 
     const activeMembers = db.users.filter(u => u.role === 'member' && u.status === 'approved');
+    const eligibleMembers = db.users.filter(u => u.status === 'approved' && ['member', 'manager', 'admin'].includes(u.role));
     const memberCount = Math.max(activeMembers.length, 1);
 
     // Mess total meal today
-    const messTotalMealsToday = db.records
-      .filter(r => r.date === todayStr)
-      .reduce((sum, r) => sum + r.count, 0);
+    const todayDaily = db.dailyMeals.find(d => d.date === todayStr);
+    let todayLunchMeals = 0;
+    let todayDinnerMeals = 0;
 
-    // Mess total meal of current month
-    const messTotalMealsMonth = db.records
-      .filter(r => r.date && r.date.startsWith(currentMonth))
-      .reduce((sum, r) => sum + r.count, 0);
+    if (todayDaily?.lunch?.isLocked) {
+      todayLunchMeals = todayDaily.lunch.totalCount;
+    } else {
+      todayLunchMeals = eligibleMembers.filter(m => {
+        const off = db.records.find(r => r.userId === m.id && r.date === todayStr && r.mealType === 'lunch' && (r.count === 0 || r.requestStatus === 'accepted'));
+        return !off;
+      }).length;
+    }
+
+    if (todayDaily?.dinner?.isLocked) {
+      todayDinnerMeals = todayDaily.dinner.totalCount;
+    } else {
+      todayDinnerMeals = eligibleMembers.filter(m => {
+        const off = db.records.find(r => r.userId === m.id && r.date === todayStr && r.mealType === 'dinner' && (r.count === 0 || r.requestStatus === 'accepted'));
+        return !off;
+      }).length;
+    }
+
+    const messTotalMealsToday = todayLunchMeals + todayDinnerMeals;
 
     // Meal total cost of this week
     const weekStart = getWeekStart(today);
@@ -153,6 +196,7 @@ export async function GET(req: NextRequest) {
       baseRate,
       hasActiveCalculation: allMealsCount > 0 && totalBazaarExpenses > 0,
       today: todayStr,
+      todayDailyMeal: todayDaily || null,
       fixedBills,
       pastMonthComparison,
     };
