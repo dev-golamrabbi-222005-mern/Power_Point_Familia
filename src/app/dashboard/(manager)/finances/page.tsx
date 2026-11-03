@@ -1,29 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/src/context/AuthContext';
-import ManagerFinanceTab from '@/src/components/dashboard/(manager)/ManagerFinanceTab';
+import UnifiedFinancePage from '../../(member)/finance/page';
 
-export default function ManagerFinancesPage() {
+export default function ManagerFinancesLegacyPage() {
   const router = useRouter();
-  const { token } = useAuth();
 
-  if (!token) return null;
+  useEffect(() => {
+    // Soft redirect to canonical unified route
+    router.replace('/dashboard/finance');
+  }, [router]);
 
-  return (
-    <div>
-      <h2 className="section-title mb-6">Global Member Finances & Fixed Costs</h2>
-      <ManagerFinanceTab
-        token={token}
-        onNavigateToTickets={(targetUserId) => {
-          if (targetUserId) {
-            router.push(`/dashboard/tickets?user=${encodeURIComponent(targetUserId)}`);
-          } else {
-            router.push('/dashboard/tickets');
-          }
-        }}
-      />
-    </div>
-  );
+  return <UnifiedFinancePage />;
 }

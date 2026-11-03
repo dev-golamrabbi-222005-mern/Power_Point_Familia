@@ -1,35 +1,29 @@
 'use client';
 
-import React, { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useAuth } from '@/src/context/AuthContext';
-import { useDashboard } from '@/src/context/DashboardContext';
-import ManagerTicketsTab from '@/src/components/dashboard/(manager)/ManagerTicketsTab';
+import React, { useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import UnifiedFinancePage from '../../(member)/finance/page';
 
-function TicketsContent() {
-  const { token } = useAuth();
-  const { refreshDeposits } = useDashboard();
+function ManagerTicketsRedirect() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const prefillUser = searchParams?.get('user') || null;
 
-  if (!token) return null;
+  useEffect(() => {
+    // Soft redirect to canonical unified route with tab=tickets
+    const userParam = searchParams.get('user');
+    const targetUrl = userParam
+      ? `/dashboard/finance?tab=tickets&user=${encodeURIComponent(userParam)}`
+      : '/dashboard/finance?tab=tickets';
+    router.replace(targetUrl);
+  }, [router, searchParams]);
 
-  return (
-    <div>
-      <h2 className="section-title mb-6">Deposit Requests & Warning Tickets</h2>
-      <ManagerTicketsTab
-        token={token}
-        prefillWarnUserId={prefillUser}
-        onRefreshData={refreshDeposits}
-      />
-    </div>
-  );
+  return <UnifiedFinancePage />;
 }
 
-export default function ManagerTicketsPage() {
+export default function ManagerTicketsLegacyPage() {
   return (
-    <Suspense fallback={<div className="text-xs text-zinc-500 py-4">Loading tickets view...</div>}>
-      <TicketsContent />
+    <Suspense fallback={null}>
+      <ManagerTicketsRedirect />
     </Suspense>
   );
 }

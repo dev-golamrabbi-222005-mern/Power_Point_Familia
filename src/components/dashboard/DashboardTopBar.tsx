@@ -80,7 +80,10 @@ export default function DashboardTopBar() {
       <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between gap-3">
         {/* Left side: Power Point Familia branding & Role badge */}
         <div className="flex items-center gap-3 min-w-0">
-          <Logo/>
+          <Link href="/dashboard" className="shrink-0 flex items-center">
+            <Logo size="sm" className="sm:hidden" />
+            <Logo size="md" className="hidden sm:inline-flex" />
+          </Link>
 
           {/* Role Badge */}
           <div className="flex items-center gap-1.5 shrink-0">
@@ -249,6 +252,7 @@ export default function DashboardTopBar() {
                 <img
                   src={user.image || user.photoURL}
                   alt={user.name}
+                  referrerPolicy="no-referrer"
                   className="w-7 h-7 rounded-lg object-cover border border-emerald-500/30 shrink-0"
                 />
               ) : (
@@ -275,6 +279,7 @@ export default function DashboardTopBar() {
                     <img
                       src={user.image || user.photoURL}
                       alt={user.name}
+                      referrerPolicy="no-referrer"
                       className="w-9 h-9 rounded-xl object-cover border border-emerald-500/40 shrink-0 shadow-sm"
                     />
                   ) : (

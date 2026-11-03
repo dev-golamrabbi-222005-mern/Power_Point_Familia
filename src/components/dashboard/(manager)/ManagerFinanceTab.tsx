@@ -496,7 +496,8 @@ export default function ManagerFinanceTab({
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop View: Wide Data Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs md:text-sm border-collapse">
             <thead>
               <tr className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold">
@@ -613,6 +614,106 @@ export default function ManagerFinanceTab({
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View: High-End Responsive Touch Cards */}
+        <div className="md:hidden space-y-3">
+          {memberRows.map((row) => (
+            <div
+              key={row.userId}
+              className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 space-y-3 shadow-xs"
+            >
+              {/* Card Header: User Info & Status Badge */}
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-bold text-sm text-zinc-900 dark:text-white">{row.name}</p>
+                    {row.role === 'manager' && (
+                      <span className="text-[9px] font-extrabold px-1.5 py-0.2 bg-teal-500/20 text-teal-400 rounded">
+                        Manager
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-mono mt-0.5">{row.email}</p>
+                </div>
+
+                {/* Due status pill */}
+                <div>
+                  {row.isAbsent7Days ? (
+                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-extrabold rounded-full border border-emerald-500/20 whitespace-nowrap">
+                      7-Day Exemption
+                    </span>
+                  ) : row.weeklyDueAmount > 0 ? (
+                    <span className="px-2 py-0.5 bg-red-500/10 text-red-400 text-[10px] font-extrabold rounded-full border border-red-500/20 whitespace-nowrap">
+                      ৳{row.weeklyDueAmount} Due
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold rounded-full border border-emerald-500/20 whitespace-nowrap">
+                      Up-to-date ✓
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 2x2 Mini Metrics Grid */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-200/60 dark:border-zinc-700/60">
+                <div className="p-2.5 bg-white dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60">
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Fixed Share</p>
+                  <p className="text-xs font-bold text-zinc-900 dark:text-white mt-0.5">
+                    ৳{row.fixedTotalPaid} / ৳{row.fixedTotalShare}
+                  </p>
+                  <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold mt-0.5 ${
+                    row.fixedStatus === 'paid' ? 'text-emerald-500' : 'text-amber-500'
+                  }`}>
+                    {row.fixedStatus === 'paid' ? '✓ Paid' : '⏳ Unpaid'}
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-white dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60">
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Meal Cash Given</p>
+                  <p className="text-xs font-extrabold text-emerald-500 mt-0.5">
+                    ৳{row.mealCashDeposited}
+                  </p>
+                  <p className="text-[9px] text-zinc-400 mt-0.5">
+                    Eaten: <span className="font-bold text-zinc-200">{row.mealsEatenCount} meals</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Card Actions Footer */}
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60">
+                <button
+                  onClick={() => {
+                    const mObj = rawUsers.find((u) => u.id === row.userId);
+                    if (mObj) openAssignFixedModal(mObj);
+                  }}
+                  className="py-1.5 px-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] rounded-xl flex items-center justify-center gap-1 transition-all cursor-pointer shadow-xs"
+                >
+                  <Receipt className="w-3 h-3" />
+                  <span>Costs</span>
+                </button>
+
+                <button
+                  onClick={() => onNavigateToTickets(row.userId)}
+                  className="py-1.5 px-2 bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold text-[11px] rounded-xl flex items-center justify-center gap-1 transition-all cursor-pointer shadow-xs"
+                >
+                  <Send className="w-3 h-3" />
+                  <span>Warn</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const mObj = rawUsers.find((u) => u.id === row.userId);
+                    if (mObj) openEditModal(mObj);
+                  }}
+                  className="py-1.5 px-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-200 font-bold text-[11px] rounded-xl flex items-center justify-center gap-1 transition-all cursor-pointer shadow-xs"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>Edit</span>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

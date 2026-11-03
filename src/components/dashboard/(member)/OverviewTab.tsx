@@ -102,6 +102,84 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
         </div>
       )}
 
+      {/* === TODAY'S KITCHEN MENU HERO BANNER === */}
+      {!overview?.isMonthMealOff && (
+        <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl p-4 md:p-5 shadow-lg relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800/80">
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                <Utensils className="w-5 h-5" />
+              </span>
+              <div>
+                <h2 className="text-sm md:text-base font-black text-zinc-100 flex items-center gap-2">
+                  <span>আজকের কিচেন মেনু</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </span>
+                </h2>
+                <p className="text-[11px] text-zinc-400">
+                  রান্না শুরুর চূড়ান্ত হেডকাউন্ট ও মেনু স্ট্যাটাস
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Lock Status */}
+            <div className="flex items-center gap-2 text-xs">
+              <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1 ${
+                overview?.isLunchLocked && overview?.isDinnerLocked
+                  ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                  : overview?.isLunchLocked || overview?.isDinnerLocked
+                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+              }`}>
+                {overview?.isLunchLocked && overview?.isDinnerLocked
+                  ? '🔒 সব বেলার মিল লকড'
+                  : overview?.isLunchLocked
+                  ? '🔒 দুপুর লকড • রাত ওপেন'
+                  : '🟢 মিল অন/অফ ওপেন'}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+            {/* Lunch Menu Item */}
+            <div className="p-3 bg-zinc-950/60 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400 flex items-center gap-1">
+                  ☀️ দুপুরের খাবার (Lunch)
+                </span>
+                <p className="text-xs md:text-sm font-extrabold text-zinc-100 truncate mt-0.5">
+                  {overview?.lunchMenu ? `🍲 ${overview.lunchMenu}` : 'মেনু এখনো সেট করা হয়নি ⏳'}
+                </p>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-black shrink-0 ${
+                overview?.isLunchLocked ? 'bg-red-950/60 text-red-400 border border-red-800/50' : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/50'
+              }`}>
+                {overview?.isLunchLocked ? 'লকড' : 'চলমান'}
+              </span>
+            </div>
+
+            {/* Dinner Menu Item */}
+            <div className="p-3 bg-zinc-950/60 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-400 flex items-center gap-1">
+                  🌙 রাতের খাবার (Dinner)
+                </span>
+                <p className="text-xs md:text-sm font-extrabold text-zinc-100 truncate mt-0.5">
+                  {overview?.dinnerMenu ? `🍲 ${overview.dinnerMenu}` : 'মেনু এখনো সেট করা হয়নি ⏳'}
+                </p>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-black shrink-0 ${
+                overview?.isDinnerLocked ? 'bg-red-950/60 text-red-400 border border-red-800/50' : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/50'
+              }`}>
+                {overview?.isDinnerLocked ? 'লকড' : 'চলমান'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* First Bazaar Status */}
       {!overview?.isMonthMealOff && (
         (overview?.totalBazaarExpenses || 0) > 0 ? (

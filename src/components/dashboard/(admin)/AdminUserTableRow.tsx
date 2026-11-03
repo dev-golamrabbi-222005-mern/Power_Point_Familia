@@ -34,6 +34,7 @@ export function AdminUserTableRow({
             <img
               src={usr.image || usr.photoURL}
               alt={usr.name}
+              referrerPolicy="no-referrer"
               className="w-8 h-8 rounded-xl object-cover border border-zinc-700/80 shrink-0"
             />
           ) : (

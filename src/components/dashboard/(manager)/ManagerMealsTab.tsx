@@ -549,8 +549,8 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
           </form>
         )}
 
-        {/* Assignments Table */}
-        <div className="overflow-x-auto">
+        {/* Desktop View: Assignments Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs md:text-sm border-collapse">
             <thead>
               <tr className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold">
@@ -592,6 +592,49 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View: High-End Touch Cards */}
+        <div className="md:hidden space-y-2.5">
+          {assignments.length === 0 ? (
+            <div className="p-4 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl">
+              No bazaar assignments scheduled.
+            </div>
+          ) : (
+            assignments.slice(0, 10).map((a) => (
+              <div
+                key={a.id}
+                className="p-3.5 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 space-y-2 shadow-xs"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-xs text-zinc-900 dark:text-white">
+                      {a.userName || 'Member 1'}
+                      {a.member2Name && <span className="text-orange-400 font-bold"> & {a.member2Name}</span>}
+                    </p>
+                    <p className="text-[10px] text-zinc-400 font-mono mt-0.5">{a.date}</p>
+                  </div>
+
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    a.status === 'verified' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : a.status === 'submitted' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                  }`}>
+                    {a.status}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60">
+                  <span className="text-[11px] text-zinc-400">Handover Cash:</span>
+                  <span className="font-mono font-bold text-amber-500">৳{a.allocatedCash ?? a.budget ?? 0}</span>
+                </div>
+
+                {a.shoppingList && a.shoppingList.length > 0 && (
+                  <p className="text-[10px] text-zinc-400 truncate pt-1 border-t border-zinc-200/40 dark:border-zinc-700/40">
+                    🛒 {a.shoppingList.join(', ')}
+                  </p>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
 

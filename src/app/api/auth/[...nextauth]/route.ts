@@ -29,7 +29,7 @@ const authOptions: NextAuthOptions = {
         await ensureDbInit();
         const db = getDb();
         const cleanEmail = user.email.toLowerCase().trim();
-        const isAdmin = cleanEmail === DEFAULT_ADMIN;
+        const isAdmin = cleanEmail === DEFAULT_ADMIN || cleanEmail === 'g.rabbi.dev@gmail.com' || cleanEmail === 'g.rabbi2005.555@gmail.com';
         const profileImage = (user.image || (profile as any)?.picture || '') as string;
         const displayName = user.name || cleanEmail.split('@')[0];
 

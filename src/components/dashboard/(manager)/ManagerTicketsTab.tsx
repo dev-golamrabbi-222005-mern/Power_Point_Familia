@@ -272,7 +272,8 @@ export default function ManagerTicketsTab({ token, onError, onRefreshData, prefi
 
       {/* Tickets List / Table */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 shadow-sm">
-        <div className="overflow-x-auto">
+        {/* Desktop View: Wide Data Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs md:text-sm border-collapse">
             <thead>
               <tr className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold">
@@ -387,6 +388,109 @@ export default function ManagerTicketsTab({ token, onError, onRefreshData, prefi
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View: High-End Responsive Touch Cards */}
+        <div className="md:hidden space-y-3">
+          {filteredDeposits.length === 0 ? (
+            <div className="p-6 text-center text-zinc-400 text-xs">
+              No tickets found matching the filter.
+            </div>
+          ) : (
+            filteredDeposits.map((dep) => {
+              const member = users.find((u) => u.id === dep.userId);
+              const isNotice = dep.paymentMethod === 'Notice / Warning';
+
+              return (
+                <div
+                  key={dep.id}
+                  className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 space-y-3 shadow-xs"
+                >
+                  {/* Card Header: Member + Amount + Status Badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-sm text-zinc-900 dark:text-white">
+                        {member ? member.name : dep.userName || 'Member'}
+                      </p>
+                      <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                        {member?.email || dep.userEmail || ''}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-base font-black text-zinc-900 dark:text-white">
+                        ৳{dep.amount}
+                      </p>
+                      <div className="mt-0.5">
+                        {dep.status === 'approved' ? (
+                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-extrabold rounded-full border border-emerald-500/20">
+                            Approved ✓
+                          </span>
+                        ) : dep.status === 'rejected' ? (
+                          <span className="px-2 py-0.5 bg-red-500/10 text-red-500 text-[10px] font-extrabold rounded-full border border-red-500/20">
+                            Rejected ✕
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 text-[10px] font-extrabold rounded-full border border-amber-500/20 animate-pulse">
+                            Pending ⏳
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ticket Details Pill & Info */}
+                  <div className="p-2.5 bg-white dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300">
+                        {isNotice ? (
+                          <span className="text-amber-500 font-bold">Warning Notice</span>
+                        ) : dep.remarks?.includes('Fixed Expense') ? (
+                          <span className="text-indigo-400 font-bold">Fixed Utility Ticket</span>
+                        ) : (
+                          <span className="text-emerald-400 font-bold">Meal Cash Ticket</span>
+                        )}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-mono">
+                        {new Date(dep.date).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                      <span className="text-zinc-400">Method: <strong className="text-zinc-200">{dep.paymentMethod}</strong></span>
+                      <span className="text-zinc-400 font-mono text-[10px]">Trx: <strong className="text-zinc-200">{dep.transactionId || '--'}</strong></span>
+                    </div>
+
+                    {dep.remarks && (
+                      <p className="text-[11px] text-zinc-400 italic pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                        "{dep.remarks}"
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions for Pending Tickets */}
+                  {dep.status === 'pending' && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        onClick={() => handleDepositAction(dep.id, 'approved')}
+                        className="py-2 px-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Approve Deposit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDepositAction(dep.id, 'rejected')}
+                        className="py-2 px-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs rounded-xl border border-red-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { Sparkles, ArrowRight } from 'lucide-react';
 interface HeroBannerProps {
   mealRate: number;
   onLoginClick: () => void;
-  onRegisterClick: () => void;
+  onRegisterClick?: () => void;
 }
 
 export const HeroBanner: React.FC<HeroBannerProps> = ({
@@ -39,10 +39,10 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
           <div className="flex flex-wrap gap-4 pt-1">
             <button
               id="btn-register-hero"
-              onClick={onRegisterClick}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-950/20 transition-all duration-150 flex items-center gap-2 cursor-pointer"
+              onClick={onLoginClick}
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-950/20 transition-all duration-150 flex items-center gap-2 cursor-pointer"
             >
-              Get Started
+              <span>Get Started</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>

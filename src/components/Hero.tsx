@@ -25,16 +25,14 @@ import { MealMenu, BazaarAssignment, BazaarExpense } from "../types";
 
 interface HeroProps {
   onLoginClick: () => void;
-  onRegisterClick: () => void;
-  onDemoLogin?: (email: string) => void;
+  onRegisterClick?: () => void;
   menus: MealMenu[];
   mealRate: number;
 }
 
 export default function Hero({
   onLoginClick,
-  onRegisterClick,
-  onDemoLogin,
+  onRegisterClick = onLoginClick,
   menus,
   mealRate,
 }: HeroProps) {

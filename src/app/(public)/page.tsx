@@ -2,14 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/src/context/AuthContext';
 import Hero from '@/src/components/Hero';
 import { MealMenu } from '@/src/types';
-import { showErrorAlert } from '@/src/lib/alerts';
 
 export default function Home() {
   const router = useRouter();
-  const { login } = useAuth();
   const [menus, setMenus] = useState<MealMenu[]>([]);
   const [mealRate, setMealRate] = useState<number>(45);
 
@@ -31,30 +28,9 @@ export default function Home() {
     fetchData();
   }, []);
 
-  const handleDemoLogin = async (email: string) => {
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: 'password123' }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        login(data.token, data.user);
-        router.push('/dashboard');
-      } else {
-        showErrorAlert('Login Failed', data.message || 'Demo login failed');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   return (
     <Hero
       onLoginClick={() => router.push('/login')}
-      onRegisterClick={() => router.push('/register')}
-      onDemoLogin={handleDemoLogin}
       menus={menus}
       mealRate={mealRate}
     />

@@ -65,6 +65,7 @@ export default function ProfileSettingsModal() {
               <img
                 src={user.image || user.photoURL}
                 alt={user.name}
+                referrerPolicy="no-referrer"
                 className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500/40 shadow-md shrink-0"
               />
             ) : (

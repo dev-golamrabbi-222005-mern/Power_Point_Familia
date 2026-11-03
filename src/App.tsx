@@ -125,30 +125,6 @@ export default function App() {
     localStorage.setItem("familia_user", JSON.stringify(updatedUser));
   };
 
-  const handleDemoLogin = async (email: string) => {
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: "password123" }),
-      });
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = {};
-      }
-      if (response.ok && data.token) {
-        handleAuthSuccess(data.user, data.token);
-      } else {
-        showErrorAlert("Login Failed", data.message || "Login failed. Server may not be running.");
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   // Render proper dashboard according to role
   const renderDashboardByRole = () => {
     if (!user || !token) return null;
@@ -189,7 +165,6 @@ export default function App() {
           <GuestDashboard
             user={user}
             stats={stats}
-            onDemoSwitch={handleDemoLogin}
           />
         );
     }
@@ -438,7 +413,6 @@ export default function App() {
               setAuthTab("register");
               setIsAuthOpen(true);
             }}
-            onDemoLogin={handleDemoLogin}
             menus={menus}
             mealRate={mealRate}
           />

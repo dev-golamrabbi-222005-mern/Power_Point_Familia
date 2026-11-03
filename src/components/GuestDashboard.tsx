@@ -7,10 +7,9 @@ interface GuestDashboardProps {
   stats?: DashboardStats | null;
   token?: string;
   onRefreshUser?: () => void;
-  onDemoSwitch?: (email: string) => void;
 }
 
-export default function GuestDashboard({ user, stats, token, onRefreshUser, onDemoSwitch }: GuestDashboardProps) {
+export default function GuestDashboard({ user, stats, token, onRefreshUser }: GuestDashboardProps) {
   const currentStatus = user.status;
 
   return (

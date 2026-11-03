@@ -31,6 +31,7 @@ interface SidebarLink {
 
 export default function DashboardSidebar() {
   const { user } = useAuth();
+  const [imageError, setImageError] = React.useState(false);
   const {
     activeRoleView,
     setActiveRoleView,
@@ -41,27 +42,25 @@ export default function DashboardSidebar() {
 
   if (!user) return null;
 
-  // 1. MEMBER LINKS
+  // 1. MEMBER LINKS (4 Clean Tabs)
   const memberLinks: SidebarLink[] = [
     { href: '/dashboard', label: 'Overview', icon: TrendingUp },
     { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
-    { href: '/dashboard/meals', label: 'Meals', icon: Utensils },
-    { href: '/dashboard/finance', label: 'Finance', icon: Wallet },
-    { href: '/dashboard/history', label: 'History', icon: History },
+    { href: '/dashboard/meals', label: 'Meals & Menu', icon: Utensils },
+    { href: '/dashboard/finance', label: 'Finance & Ledger', icon: Wallet },
   ];
 
-  // 2. MANAGER LINKS
+  // 2. MANAGER LINKS (4 Clean Tabs)
   const managerLinks: SidebarLink[] = [
     { href: '/dashboard', label: 'Overview', icon: TrendingUp },
+    { href: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
+    { href: '/dashboard/meals', label: 'Meals & Bazaar', icon: ChefHat },
     {
-      href: '/dashboard/tickets',
-      label: 'Tickets',
-      icon: ClipboardList,
+      href: '/dashboard/finance',
+      label: 'Finances & Dues',
+      icon: DollarSign,
       badge: pendingDepositsCount > 0 ? pendingDepositsCount : undefined,
     },
-    { href: '/dashboard/meals-bazaar', label: 'Meals & Bazaar', icon: ChefHat },
-    { href: '/dashboard/finances', label: 'Finances', icon: DollarSign },
-    { href: '/dashboard/manager-history', label: 'History', icon: History },
   ];
 
   // 3. ADMIN LINKS
@@ -91,9 +90,19 @@ export default function DashboardSidebar() {
     <aside className="hidden md:block w-64 shrink-0 space-y-6">
       {/* User Profile Summary Card */}
       <div className="p-4 bg-zinc-900/80 border border-zinc-800 rounded-2xl flex items-center gap-3 shadow-xs">
-        <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center font-black text-sm shrink-0">
-          {user.name.charAt(0).toUpperCase()}
-        </div>
+        {!imageError && (user.image || user.photoURL) ? (
+          <img
+            src={user.image || user.photoURL}
+            alt={user.name}
+            referrerPolicy="no-referrer"
+            onError={() => setImageError(true)}
+            className="w-10 h-10 rounded-xl object-cover border border-emerald-500/30 shrink-0 shadow-xs"
+          />
+        ) : (
+          <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center font-black text-sm shrink-0">
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+        )}
         <div className="overflow-hidden">
           <p className="text-sm font-bold text-zinc-100 truncate">{user.name}</p>
           <div className="flex items-center gap-1.5 mt-0.5">

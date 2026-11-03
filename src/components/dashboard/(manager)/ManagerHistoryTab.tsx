@@ -120,7 +120,8 @@ export default function ManagerHistoryTab({ token, onError }: ManagerHistoryTabP
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop View: Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs md:text-sm border-collapse">
             <thead>
               <tr className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold">
@@ -154,6 +155,44 @@ export default function ManagerHistoryTab({ token, onError }: ManagerHistoryTabP
             </tbody>
           </table>
         </div>
+
+        {/* Mobile View: High-End Responsive Touch Cards */}
+        <div className="md:hidden space-y-2.5">
+          {individualHistory.map((item) => (
+            <div
+              key={item.month}
+              className="p-3.5 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 space-y-2 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">{item.monthName}</p>
+                {item.status === 'settled' ? (
+                  <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-extrabold rounded-full border border-emerald-500/20">
+                    Settled ✓
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 text-[10px] font-extrabold rounded-full border border-amber-500/20">
+                    In Progress ⏳
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 text-center">
+                <div className="p-1.5 bg-white dark:bg-zinc-900/60 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                  <p className="text-[9px] text-zinc-400">Fixed Cost</p>
+                  <p className="text-xs font-bold text-indigo-400 mt-0.5">৳{item.fixedCost}</p>
+                </div>
+                <div className="p-1.5 bg-white dark:bg-zinc-900/60 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                  <p className="text-[9px] text-zinc-400">Meal Cost</p>
+                  <p className="text-xs font-bold text-emerald-400 mt-0.5">৳{item.mealCost}</p>
+                </div>
+                <div className="p-1.5 bg-white dark:bg-zinc-900/60 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                  <p className="text-[9px] text-zinc-400">Total Month</p>
+                  <p className="text-xs font-black text-zinc-100 mt-0.5">৳{item.totalCost}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* === TABLE 2: WHOLE MESS MONTHLY COST HISTORY === */}
@@ -170,7 +209,8 @@ export default function ManagerHistoryTab({ token, onError }: ManagerHistoryTabP
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop View: Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs md:text-sm border-collapse">
             <thead>
               <tr className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold">
@@ -203,6 +243,44 @@ export default function ManagerHistoryTab({ token, onError }: ManagerHistoryTabP
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View: High-End Responsive Touch Cards */}
+        <div className="md:hidden space-y-2.5">
+          {messHistory.map((item) => (
+            <div
+              key={item.month}
+              className="p-3.5 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700/80 space-y-2 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">{item.monthName}</p>
+                {item.status === 'settled' ? (
+                  <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-extrabold rounded-full border border-emerald-500/20">
+                    Archived ✓
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-blue-500/10 text-blue-500 text-[10px] font-extrabold rounded-full border border-blue-500/20">
+                    Active Month ⏳
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 text-center">
+                <div className="p-1.5 bg-white dark:bg-zinc-900/60 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                  <p className="text-[9px] text-zinc-400">Fixed Costs</p>
+                  <p className="text-xs font-bold text-indigo-400 mt-0.5">৳{item.totalFixedCost}</p>
+                </div>
+                <div className="p-1.5 bg-white dark:bg-zinc-900/60 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                  <p className="text-[9px] text-zinc-400">Meal Spend</p>
+                  <p className="text-xs font-bold text-amber-400 mt-0.5">৳{item.totalMealCost}</p>
+                </div>
+                <div className="p-1.5 bg-white dark:bg-zinc-900/60 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                  <p className="text-[9px] text-zinc-400">Total Mess</p>
+                  <p className="text-xs font-black text-zinc-100 mt-0.5">৳{item.totalMessCost}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

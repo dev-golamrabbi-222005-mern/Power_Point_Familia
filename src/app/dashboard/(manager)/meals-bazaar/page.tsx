@@ -1,24 +1,16 @@
 'use client';
 
-import React from 'react';
-import { useAuth } from '@/src/context/AuthContext';
-import { useDashboard } from '@/src/context/DashboardContext';
-import ManagerMealsTab from '@/src/components/dashboard/(manager)/ManagerMealsTab';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import UnifiedMealsPage from '../../(member)/meals/page';
 
-export default function ManagerMealsBazaarPage() {
-  const { token } = useAuth();
-  const { menus, refreshSystemData } = useDashboard();
+export default function ManagerMealsBazaarLegacyPage() {
+  const router = useRouter();
 
-  if (!token) return null;
+  useEffect(() => {
+    // Soft redirect to canonical unified route
+    router.replace('/dashboard/meals');
+  }, [router]);
 
-  return (
-    <div>
-      <h2 className="section-title mb-6">Meals Menu & Bazaar Verification</h2>
-      <ManagerMealsTab
-        token={token}
-        menus={menus}
-        onRefreshMenus={refreshSystemData}
-      />
-    </div>
-  );
+  return <UnifiedMealsPage />;
 }

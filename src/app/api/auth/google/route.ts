@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const isAdmin = cleanEmail === DEFAULT_ADMIN;
+    const isAdmin = cleanEmail === DEFAULT_ADMIN || cleanEmail === 'g.rabbi.dev@gmail.com' || cleanEmail === 'g.rabbi2005.555@gmail.com';
     const profilePic = image || photoURL || '';
 
     await ensureDbInit();

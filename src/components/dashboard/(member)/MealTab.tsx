@@ -328,11 +328,6 @@ export default function MealTab({ token, onError }: MealTabProps) {
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
                     <Clock className="w-3 h-3" /> Expected Cut-off: 09:00 AM
                   </p>
-                  {todayLunch?.menu && (
-                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                      🍲 মেনু: {todayLunch.menu}
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -377,7 +372,7 @@ export default function MealTab({ token, onError }: MealTabProps) {
             <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2">
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 {todayLunch?.isLocked 
-                  ? 'রান্নার চাল-ডাল চুলায় উঠে গেছে' 
+                  ? `${todayLunch?.menu ? `🍲 মেনু: ${todayLunch.menu}` : 'No Menu'}`
                   : todayLunch?.isCutoffPassed 
                   ? 'Expected cut-off passed for lunch' 
                   : 'Before cut-off (direct toggle)'}
@@ -502,7 +497,7 @@ export default function MealTab({ token, onError }: MealTabProps) {
             <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2">
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 {todayDinner?.isLocked 
-                  ? 'রান্নার চাল-ডাল চুলায় উঠে গেছে' 
+                  ? `${todayDinner?.menu ? `🍲 মেনু: ${todayDinner.menu}` : 'No Menu'}` 
                   : todayDinner?.isCutoffPassed 
                   ? 'Expected cut-off passed for dinner' 
                   : 'Before cut-off (direct toggle)'}
