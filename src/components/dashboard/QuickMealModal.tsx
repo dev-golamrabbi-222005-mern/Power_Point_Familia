@@ -8,6 +8,8 @@ import { Utensils, X, Sun, Moon, Check, AlertCircle, RefreshCw, Clock, Send } fr
 interface MealDetail {
   isOn: boolean;
   isCutoffPassed: boolean;
+  isLocked?: boolean;
+  menu?: string;
   requestStatus?: 'none' | 'pending' | 'accepted' | 'rejected';
   requestReason?: string;
 }
@@ -73,12 +75,16 @@ export default function QuickMealModal() {
             lunch: {
               isOn: lunchRec ? lunchRec.isOn : true,
               isCutoffPassed: item.isToday && currentHour >= 9,
+              isLocked: Boolean(lunchRec?.isLocked),
+              menu: lunchRec?.menu || '',
               requestStatus: lunchRec?.requestStatus,
               requestReason: lunchRec?.requestReason,
             },
             dinner: {
               isOn: dinnerRec ? dinnerRec.isOn : true,
               isCutoffPassed: item.isToday && currentHour >= 15,
+              isLocked: Boolean(dinnerRec?.isLocked),
+              menu: dinnerRec?.menu || '',
               requestStatus: dinnerRec?.requestStatus,
               requestReason: dinnerRec?.requestReason,
             },
@@ -250,15 +256,17 @@ export default function QuickMealModal() {
                     <div className="space-y-1">
                       <button
                         onClick={() => handleToggle(day.dateStr, 'lunch', day.lunch.isOn, day.lunch.isCutoffPassed)}
-                        disabled={toggling === `${day.dateStr}-lunch` || day.lunch.requestStatus === 'pending'}
-                        className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
-                          day.lunch.requestStatus === 'pending'
+                        disabled={day.lunch.isLocked || toggling === `${day.dateStr}-lunch` || day.lunch.requestStatus === 'pending'}
+                        className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all ${
+                          day.lunch.isLocked
+                            ? 'bg-zinc-900/80 border-red-900/40 text-zinc-400 cursor-not-allowed opacity-80'
+                            : day.lunch.requestStatus === 'pending'
                             ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 cursor-wait'
                             : day.lunch.isOn
                             ? day.lunch.isCutoffPassed
-                              ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:border-amber-400'
-                              : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                            : 'bg-zinc-950/60 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                              ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:border-amber-400 cursor-pointer'
+                              : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 cursor-pointer'
+                            : 'bg-zinc-950/60 border-zinc-800 text-zinc-500 hover:border-zinc-700 cursor-pointer'
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -266,7 +274,9 @@ export default function QuickMealModal() {
                           <div className="text-left truncate">
                             <p className="text-xs font-bold">Lunch</p>
                             <p className="text-[10px] opacity-80 truncate">
-                              {day.lunch.requestStatus === 'pending'
+                              {day.lunch.isLocked
+                                ? '🔒 Kitchen Locked'
+                                : day.lunch.requestStatus === 'pending'
                                 ? 'Req Pending'
                                 : day.lunch.isOn
                                 ? day.lunch.isCutoffPassed
@@ -278,7 +288,9 @@ export default function QuickMealModal() {
                         </div>
                         <div
                           className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                            day.lunch.requestStatus === 'pending'
+                            day.lunch.isLocked
+                              ? 'bg-red-950/60 text-red-400 border border-red-800/50 text-[10px]'
+                              : day.lunch.requestStatus === 'pending'
                               ? 'bg-amber-500/30 text-amber-300'
                               : day.lunch.isOn
                               ? day.lunch.isCutoffPassed
@@ -287,7 +299,9 @@ export default function QuickMealModal() {
                               : 'bg-zinc-800 text-zinc-400'
                           }`}
                         >
-                          {toggling === `${day.dateStr}-lunch`
+                          {day.lunch.isLocked
+                            ? '🔒'
+                            : toggling === `${day.dateStr}-lunch`
                             ? '...'
                             : day.lunch.requestStatus === 'pending'
                             ? '⏳'
@@ -299,26 +313,32 @@ export default function QuickMealModal() {
                         </div>
                       </button>
 
-                      {day.lunch.isCutoffPassed && day.lunch.isOn && day.lunch.requestStatus !== 'pending' && (
+                      {day.lunch.isLocked ? (
+                        <p className="text-[9px] text-red-400 text-center font-medium">
+                          রান্নার চাল-ডাল চুলায় উঠে গেছে {day.lunch.menu ? `(${day.lunch.menu})` : ''}
+                        </p>
+                      ) : day.lunch.isCutoffPassed && day.lunch.isOn && day.lunch.requestStatus !== 'pending' ? (
                         <p className="text-[9px] text-amber-400 text-center font-medium">
                           Past 9 AM → Tap to request off
                         </p>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* Dinner Toggle */}
                     <div className="space-y-1">
                       <button
                         onClick={() => handleToggle(day.dateStr, 'dinner', day.dinner.isOn, day.dinner.isCutoffPassed)}
-                        disabled={toggling === `${day.dateStr}-dinner` || day.dinner.requestStatus === 'pending'}
-                        className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
-                          day.dinner.requestStatus === 'pending'
+                        disabled={day.dinner.isLocked || toggling === `${day.dateStr}-dinner` || day.dinner.requestStatus === 'pending'}
+                        className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all ${
+                          day.dinner.isLocked
+                            ? 'bg-zinc-900/80 border-red-900/40 text-zinc-400 cursor-not-allowed opacity-80'
+                            : day.dinner.requestStatus === 'pending'
                             ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300 cursor-wait'
                             : day.dinner.isOn
                             ? day.dinner.isCutoffPassed
-                              ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:border-amber-400'
-                              : 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
-                            : 'bg-zinc-950/60 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                              ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:border-amber-400 cursor-pointer'
+                              : 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 cursor-pointer'
+                            : 'bg-zinc-950/60 border-zinc-800 text-zinc-500 hover:border-zinc-700 cursor-pointer'
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -326,7 +346,9 @@ export default function QuickMealModal() {
                           <div className="text-left truncate">
                             <p className="text-xs font-bold">Dinner</p>
                             <p className="text-[10px] opacity-80 truncate">
-                              {day.dinner.requestStatus === 'pending'
+                              {day.dinner.isLocked
+                                ? '🔒 Kitchen Locked'
+                                : day.dinner.requestStatus === 'pending'
                                 ? 'Req Pending'
                                 : day.dinner.isOn
                                 ? day.dinner.isCutoffPassed
@@ -338,7 +360,9 @@ export default function QuickMealModal() {
                         </div>
                         <div
                           className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                            day.dinner.requestStatus === 'pending'
+                            day.dinner.isLocked
+                              ? 'bg-red-950/60 text-red-400 border border-red-800/50 text-[10px]'
+                              : day.dinner.requestStatus === 'pending'
                               ? 'bg-indigo-500/30 text-indigo-300'
                               : day.dinner.isOn
                               ? day.dinner.isCutoffPassed
@@ -347,7 +371,9 @@ export default function QuickMealModal() {
                               : 'bg-zinc-800 text-zinc-400'
                           }`}
                         >
-                          {toggling === `${day.dateStr}-dinner`
+                          {day.dinner.isLocked
+                            ? '🔒'
+                            : toggling === `${day.dateStr}-dinner`
                             ? '...'
                             : day.dinner.requestStatus === 'pending'
                             ? '⏳'
@@ -359,11 +385,15 @@ export default function QuickMealModal() {
                         </div>
                       </button>
 
-                      {day.dinner.isCutoffPassed && day.dinner.isOn && day.dinner.requestStatus !== 'pending' && (
+                      {day.dinner.isLocked ? (
+                        <p className="text-[9px] text-red-400 text-center font-medium">
+                          রান্নার চাল-ডাল চুলায় উঠে গেছে {day.dinner.menu ? `(${day.dinner.menu})` : ''}
+                        </p>
+                      ) : day.dinner.isCutoffPassed && day.dinner.isOn && day.dinner.requestStatus !== 'pending' ? (
                         <p className="text-[9px] text-amber-400 text-center font-medium">
                           Past 3 PM → Tap to request off
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>

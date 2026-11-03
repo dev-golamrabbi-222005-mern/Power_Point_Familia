@@ -60,10 +60,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2. Total month's bazaar expenses for live rate
-    const totalBazaarExpenses = db.bazaarExpenses
-      .filter((e) => (e.status === 'approved' || e.status === 'pending') && e.date.startsWith(currentMonth))
-      .reduce((sum, e) => sum + e.totalCost, 0);
+    // 2. Total month's bazaar expenses and first bazaar date
+    const currentMonthBazaars = db.bazaarExpenses.filter(
+      (e) => (e.status === 'approved' || e.status === 'pending') && e.date.startsWith(currentMonth)
+    );
+    const firstBazaarDate = currentMonthBazaars.length > 0
+      ? currentMonthBazaars.map((e) => e.date).sort()[0]
+      : null;
+
+    const totalBazaarExpenses = currentMonthBazaars.reduce((sum, e) => sum + e.totalCost, 0);
 
     const baseRate = db.settings?.mealRate || 45;
     const liveMealRate =
@@ -71,8 +76,11 @@ export async function GET(req: NextRequest) {
         ? Math.round((totalBazaarExpenses / messTotalMeals) * 100) / 100
         : 0;
 
-    // 3. Today's meals (Lunch and Dinner)
+    // 3. Today's CONFIRMED meals (only counts locked/cooked meal sessions)
     const todayDaily = db.dailyMeals.find((d) => d.date === today);
+
+    let todayMyMeals = 0;
+    let todayMessMeals = 0;
 
     // Today Lunch
     let todayMyLunch = 0;
@@ -80,18 +88,8 @@ export async function GET(req: NextRequest) {
     if (todayDaily?.lunch?.isLocked) {
       todayMessLunch = todayDaily.lunch.totalCount;
       todayMyLunch = todayDaily.lunch.activeMembers?.some((m) => m.userId === userId) ? 1 : 0;
-    } else {
-      // Live preview before lock
-      const lunchOffRec = db.records.find(
-        (r) => r.userId === userId && r.date === today && r.mealType === 'lunch' && (r.count === 0 || r.requestStatus === 'accepted')
-      );
-      todayMyLunch = lunchOffRec ? 0 : 1;
-      todayMessLunch = eligibleMembers.filter((m) => {
-        const off = db.records.find(
-          (r) => r.userId === m.id && r.date === today && r.mealType === 'lunch' && (r.count === 0 || r.requestStatus === 'accepted')
-        );
-        return !off;
-      }).length;
+      todayMyMeals += todayMyLunch;
+      todayMessMeals += todayMessLunch;
     }
 
     // Today Dinner
@@ -100,22 +98,9 @@ export async function GET(req: NextRequest) {
     if (todayDaily?.dinner?.isLocked) {
       todayMessDinner = todayDaily.dinner.totalCount;
       todayMyDinner = todayDaily.dinner.activeMembers?.some((m) => m.userId === userId) ? 1 : 0;
-    } else {
-      // Live preview before lock
-      const dinnerOffRec = db.records.find(
-        (r) => r.userId === userId && r.date === today && r.mealType === 'dinner' && (r.count === 0 || r.requestStatus === 'accepted')
-      );
-      todayMyDinner = dinnerOffRec ? 0 : 1;
-      todayMessDinner = eligibleMembers.filter((m) => {
-        const off = db.records.find(
-          (r) => r.userId === m.id && r.date === today && r.mealType === 'dinner' && (r.count === 0 || r.requestStatus === 'accepted')
-        );
-        return !off;
-      }).length;
+      todayMyMeals += todayMyDinner;
+      todayMessMeals += todayMessDinner;
     }
-
-    const todayMyMeals = todayMyLunch + todayMyDinner;
-    const todayMessMeals = todayMessLunch + todayMessDinner;
 
     return NextResponse.json({
       myTotalMeals: isMonthMealOff ? 0 : myTotalMeals,
@@ -130,6 +115,13 @@ export async function GET(req: NextRequest) {
       baseRate,
       hasActiveCalculation: messTotalMeals > 0 && totalBazaarExpenses > 0,
       today,
+      firstBazaarDate,
+      totalBazaarExpenses,
+      bazaarCount: currentMonthBazaars.length,
+      isLunchLocked: Boolean(todayDaily?.lunch?.isLocked),
+      isDinnerLocked: Boolean(todayDaily?.dinner?.isLocked),
+      lunchMenu: todayDaily?.lunch?.menu || '',
+      dinnerMenu: todayDaily?.dinner?.menu || '',
       todayDailyMeal: todayDaily || null,
       isMonthMealOff,
     });

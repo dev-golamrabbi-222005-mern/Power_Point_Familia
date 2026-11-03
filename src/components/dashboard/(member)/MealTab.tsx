@@ -13,7 +13,8 @@ import {
   FileText, 
   CheckCircle2, 
   XCircle,
-  Sparkles
+  Sparkles,
+  Lock
 } from 'lucide-react';
 import RequestMealOffModal from '@/src/components/dashboard/RequestMealOffModal';
 
@@ -30,6 +31,9 @@ interface MealStatus {
   requestReason?: string;
   requestedAt?: string;
   isCutoffPassed?: boolean;
+  isLocked?: boolean;
+  menu?: string;
+  lockedAt?: string | null;
 }
 
 interface MealDay {
@@ -256,7 +260,11 @@ export default function MealTab({ token, onError }: MealTabProps) {
             </div>
             <p className="text-2xl font-extrabold text-amber-900 dark:text-amber-100">09:00 AM</p>
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
-              {todayLunch?.isCutoffPassed ? '⚠️ Cut-off Passed' : '🟢 Normal toggle active'}
+              {todayLunch?.isLocked 
+                ? '🔒 Kitchen Locked' 
+                : todayLunch?.isCutoffPassed 
+                ? '⚠️ Cut-off Passed' 
+                : '🟢 Normal toggle active'}
             </p>
           </div>
 
@@ -267,7 +275,11 @@ export default function MealTab({ token, onError }: MealTabProps) {
             </div>
             <p className="text-2xl font-extrabold text-indigo-900 dark:text-indigo-100">03:00 PM</p>
             <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
-              {todayDinner?.isCutoffPassed ? '⚠️ Cut-off Passed' : '🟢 Normal toggle active'}
+              {todayDinner?.isLocked 
+                ? '🔒 Kitchen Locked' 
+                : todayDinner?.isCutoffPassed 
+                ? '⚠️ Cut-off Passed' 
+                : '🟢 Normal toggle active'}
             </p>
           </div>
         </div>
@@ -282,7 +294,7 @@ export default function MealTab({ token, onError }: MealTabProps) {
               Today's Meal Controls ({todayStr})
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Manage today's meal status. Direct turn-off is available before cut-off time; after cut-off, submit a manager approval request.
+              Manage today's meal status. Direct turn-off is available before cut-off time; after cut-off or kitchen lock, meal state is locked for cooking.
             </p>
           </div>
           <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">
@@ -305,10 +317,22 @@ export default function MealTab({ token, onError }: MealTabProps) {
                   <Sun className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Lunch (দুপুরের খাবার)</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Lunch (দুপুরের খাবার)</h3>
+                    {todayLunch?.isLocked && (
+                      <span className="px-2 py-0.5 bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 text-[10px] font-bold rounded-full flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Locked
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Cut-off: 09:00 AM
+                    <Clock className="w-3 h-3" /> Expected Cut-off: 09:00 AM
                   </p>
+                  {todayLunch?.menu && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                      🍲 মেনু: {todayLunch.menu}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -352,10 +376,21 @@ export default function MealTab({ token, onError }: MealTabProps) {
             {/* Actions */}
             <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2">
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                {todayLunch?.isCutoffPassed ? 'Cut-off passed for lunch' : 'Before cut-off (direct toggle)'}
+                {todayLunch?.isLocked 
+                  ? 'রান্নার চাল-ডাল চুলায় উঠে গেছে' 
+                  : todayLunch?.isCutoffPassed 
+                  ? 'Expected cut-off passed for lunch' 
+                  : 'Before cut-off (direct toggle)'}
               </span>
 
-              {todayLunch?.isOn ? (
+              {todayLunch?.isLocked ? (
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 bg-zinc-200/80 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold text-xs rounded-lg flex items-center gap-1.5 cursor-not-allowed select-none">
+                    <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>রান্না শুরুর জন্য লকড</span>
+                  </div>
+                </div>
+              ) : todayLunch?.isOn ? (
                 todayLunch.isCutoffPassed ? (
                   todayLunch.requestStatus === 'pending' ? (
                     <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
@@ -407,10 +442,22 @@ export default function MealTab({ token, onError }: MealTabProps) {
                   <Moon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Dinner (রাতের খাবার)</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Dinner (রাতের খাবার)</h3>
+                    {todayDinner?.isLocked && (
+                      <span className="px-2 py-0.5 bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 text-[10px] font-bold rounded-full flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Locked
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Cut-off: 03:00 PM (15:00)
+                    <Clock className="w-3 h-3" /> Expected Cut-off: 03:00 PM
                   </p>
+                  {todayDinner?.menu && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                      🍲 মেনু: {todayDinner.menu}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -454,10 +501,21 @@ export default function MealTab({ token, onError }: MealTabProps) {
             {/* Actions */}
             <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2">
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                {todayDinner?.isCutoffPassed ? 'Cut-off passed for dinner' : 'Before cut-off (direct toggle)'}
+                {todayDinner?.isLocked 
+                  ? 'রান্নার চাল-ডাল চুলায় উঠে গেছে' 
+                  : todayDinner?.isCutoffPassed 
+                  ? 'Expected cut-off passed for dinner' 
+                  : 'Before cut-off (direct toggle)'}
               </span>
 
-              {todayDinner?.isOn ? (
+              {todayDinner?.isLocked ? (
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 bg-zinc-200/80 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 font-bold text-xs rounded-lg flex items-center gap-1.5 cursor-not-allowed select-none">
+                    <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>রান্না শুরুর জন্য লকড</span>
+                  </div>
+                </div>
+              ) : todayDinner?.isOn ? (
                 todayDinner.isCutoffPassed ? (
                   todayDinner.requestStatus === 'pending' ? (
                     <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">

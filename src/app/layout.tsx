@@ -5,6 +5,11 @@ import NextAuthProvider from '@/src/components/providers/NextAuthProvider';
 
 export const viewport: Viewport = {
   themeColor: '#0a0a0a',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 };
 
 export const metadata: Metadata = {

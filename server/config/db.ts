@@ -44,6 +44,7 @@ const DB_NAME = 'Power-Point-Famila';
 let client: MongoClient | null = null;
 let dbInstance: any = null;
 let memoryDb: DatabaseSchema | null = null;
+let isDbInitialized = false;
 
 export async function connectMongo() {
   if (dbInstance) return dbInstance;
@@ -137,7 +138,12 @@ export function getDb(): DatabaseSchema {
   }
 }
 
-export async function ensureDbInit(): Promise<DatabaseSchema> {
+export async function ensureDbInit(forceRefresh = false): Promise<DatabaseSchema> {
+  // Fast path: if already in memory and initialized, return immediately (<1ms)
+  if (memoryDb && isDbInitialized && !forceRefresh) {
+    return memoryDb;
+  }
+
   const db = await connectMongo();
 
   if (db) {
@@ -160,36 +166,45 @@ export async function ensureDbInit(): Promise<DatabaseSchema> {
       const adminChangeRequestsCol = db.collection('adminChangeRequests');
       const settingsCol = db.collection('settings');
 
-      // Enforce unique index on users by email to strictly prohibit duplicacy
-      await usersCol.createIndex({ email: 1 }, { unique: true }).catch((err) => {
-        console.warn('Users email index notice:', err?.message);
-      });
+      // Fetch all collections in parallel for maximum speed
+      const [
+        users,
+        menus,
+        records,
+        deposits,
+        bazaarAssignments,
+        bazaarExpenses,
+        bazaarPairs,
+        weeklyPayments,
+        contactMessages,
+        sharedBills,
+        memberBillPayments,
+        refundRequests,
+        monthlySummaries,
+        dailyMeals,
+        mealToggleLog,
+        adminChangeRequests,
+        settingsDoc,
+      ] = await Promise.all([
+        usersCol.find({}).toArray(),
+        menusCol.find({}).toArray(),
+        recordsCol.find({}).toArray(),
+        depositsCol.find({}).toArray(),
+        bazaarAssignmentsCol.find({}).toArray(),
+        bazaarExpensesCol.find({}).toArray(),
+        bazaarPairsCol.find({}).toArray(),
+        weeklyPaymentsCol.find({}).toArray(),
+        contactMessagesCol.find({}).toArray(),
+        sharedBillsCol.find({}).toArray(),
+        memberBillPaymentsCol.find({}).toArray(),
+        refundRequestsCol.find({}).toArray(),
+        monthlySummariesCol.find({}).toArray(),
+        dailyMealsCol.find({}).toArray(),
+        mealToggleLogCol.find({}).toArray(),
+        adminChangeRequestsCol.find({}).toArray(),
+        settingsCol.findOne({ _id: 'global_settings' as any }),
+      ]);
 
-      const usersCount = await usersCol.countDocuments();
-      if (usersCount === 0) {
-        const initData = getInitialDb();
-        await usersCol.insertMany(initData.users);
-        await settingsCol.insertOne({ ...initData.settings, _id: 'global_settings' as any });
-      }
-
-      const users = await usersCol.find({}).toArray();
-      const menus = await menusCol.find({}).toArray();
-      const records = await recordsCol.find({}).toArray();
-      const deposits = await depositsCol.find({}).toArray();
-      const bazaarAssignments = await bazaarAssignmentsCol.find({}).toArray();
-      const bazaarExpenses = await bazaarExpensesCol.find({}).toArray();
-      const bazaarPairs = await bazaarPairsCol.find({}).toArray();
-      const weeklyPayments = await weeklyPaymentsCol.find({}).toArray();
-      const contactMessages = await contactMessagesCol.find({}).toArray();
-      const sharedBills = await sharedBillsCol.find({}).toArray();
-      const memberBillPayments = await memberBillPaymentsCol.find({}).toArray();
-      const refundRequests = await refundRequestsCol.find({}).toArray();
-      const monthlySummaries = await monthlySummariesCol.find({}).toArray();
-      const dailyMeals = await dailyMealsCol.find({}).toArray();
-      const mealToggleLog = await mealToggleLogCol.find({}).toArray();
-      const adminChangeRequests = await adminChangeRequestsCol.find({}).toArray();
-
-      const settingsDoc = await settingsCol.findOne({ _id: 'global_settings' as any });
       const settings = settingsDoc ? { ...DEFAULT_SETTINGS, ...settingsDoc } : DEFAULT_SETTINGS;
 
       const formatDoc = (doc: any) => {
@@ -231,12 +246,14 @@ export async function ensureDbInit(): Promise<DatabaseSchema> {
         adminChangeRequests: adminChangeRequests.map(formatDoc),
         settings,
       };
+      isDbInitialized = true;
       return memoryDb!;
     } catch (err) {
       console.error('Failed reading from MongoDB, falling back to FS/Memory:', err);
     }
   }
 
+  isDbInitialized = true;
   return getDb();
 }
 
@@ -261,6 +278,7 @@ export async function saveDb(data: DatabaseSchema): Promise<void> {
   }
   data.users = Array.from(userMap.values());
   memoryDb = data;
+  isDbInitialized = true;
 
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');

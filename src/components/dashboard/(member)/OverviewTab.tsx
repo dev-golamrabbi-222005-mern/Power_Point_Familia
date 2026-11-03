@@ -102,14 +102,26 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
         </div>
       )}
 
-      {/* First Bazaar Pending Notice */}
-      {!overview?.isMonthMealOff && !overview?.firstBazaarDate && (
-        <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
-          <span>⏳</span>
-          <span>
-            <strong>Waiting for first bazaar:</strong> চলতি মাসে এখনো কোনো বাজার সম্পন্ন হয়নি। প্রথম বাজার সম্পন্ন হওয়ার পর মিল কাউন্টডাউন শুরু হবে।
-          </span>
-        </div>
+      {/* First Bazaar Status */}
+      {!overview?.isMonthMealOff && (
+        (overview?.totalBazaarExpenses || 0) > 0 ? (
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-300">
+            <span className="flex items-center gap-2 font-semibold">
+              <span className="text-base">🛒</span>
+              <span>চলতি মাসের বাজার চলমান রয়েছে (মোট খরচ: <strong className="font-mono text-emerald-400">৳{overview?.totalBazaarExpenses}</strong>)</span>
+            </span>
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
+              {overview?.bazaarCount || 1}টি বাজার সম্পন্ন
+            </span>
+          </div>
+        ) : (
+          <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+            <span>⏳</span>
+            <span>
+              <strong>Waiting for first bazaar:</strong> চলতি মাসে এখনো কোনো বাজার সম্পন্ন হয়নি।
+            </span>
+          </div>
+        )
       )}
 
       {/* === SUMMARY CARDS === */}
@@ -158,7 +170,9 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
             {overview?.isMonthMealOff ? 0 : (overview?.todayMyMeals || 0)}
           </p>
           <p className="text-xs font-medium text-green-700 dark:text-green-300 mt-1">
-            {overview?.isMonthMealOff ? 'Service Off' : `Lunch: ${overview?.todayMyLunch || 0} | Dinner: ${overview?.todayMyDinner || 0}`}
+            {overview?.isMonthMealOff
+              ? 'Service Off'
+              : `Lunch: ${overview?.todayMyLunch || 0}${overview?.isLunchLocked ? ' ✓' : ''} | Dinner: ${overview?.isDinnerLocked ? `${overview?.todayMyDinner || 0} ✓` : 'Pending'}`}
           </p>
         </div>
 
@@ -174,7 +188,9 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
             {overview?.isMonthMealOff ? 0 : (overview?.todayMessMeals || 0)}
           </p>
           <p className="text-xs font-medium text-orange-700 dark:text-orange-300 mt-1">
-            {overview?.isMonthMealOff ? 'Service Off' : `Lunch: ${overview?.todayMessLunch || 0} | Dinner: ${overview?.todayMessDinner || 0}`}
+            {overview?.isMonthMealOff
+              ? 'Service Off'
+              : `Lunch: ${overview?.todayMessLunch || 0}${overview?.isLunchLocked ? ' ✓' : ''} | Dinner: ${overview?.isDinnerLocked ? `${overview?.todayMessDinner || 0} ✓` : 'Pending'}`}
           </p>
         </div>
 

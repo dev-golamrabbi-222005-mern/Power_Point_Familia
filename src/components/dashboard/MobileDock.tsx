@@ -52,7 +52,7 @@ export default function MobileDock() {
     ];
 
     return (
-      <div className="md:hidden fixed bottom-3 left-3 right-3 z-50 max-w-md mx-auto pointer-events-auto">
+      <div className="md:hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] left-3 right-3 z-50 max-w-md mx-auto pointer-events-auto">
         {/* Unlocked Live Bazaar Button on Market Day */}
         {todayBazaarAssignment && (
           <button
@@ -158,7 +158,7 @@ export default function MobileDock() {
   // 2. MANAGER DOCK (in Manager view)
   if (user.role === 'manager' && activeRoleView === 'manager') {
     return (
-      <div className="md:hidden fixed bottom-3 left-3 right-3 z-50 max-w-md mx-auto pointer-events-auto">
+      <div className="md:hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] left-3 right-3 z-50 max-w-md mx-auto pointer-events-auto">
         <nav className="backdrop-blur-xl bg-zinc-950/90 border border-zinc-800/85 rounded-3xl px-2 py-2 shadow-2xl shadow-black/80 flex items-center justify-around relative">
           {/* Overview */}
           <Link
@@ -265,7 +265,7 @@ export default function MobileDock() {
 
   // 3. ADMIN DOCK
   return (
-    <div className="md:hidden fixed bottom-3 left-3 right-3 z-50 max-w-md mx-auto pointer-events-auto">
+    <div className="md:hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] left-3 right-3 z-50 max-w-md mx-auto pointer-events-auto">
       <nav className="backdrop-blur-xl bg-zinc-950/90 border border-zinc-800/85 rounded-3xl px-2 py-2 shadow-2xl shadow-black/80 flex items-center justify-around relative">
         {/* Overview */}
         <Link

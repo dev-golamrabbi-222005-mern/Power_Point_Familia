@@ -173,6 +173,12 @@ export interface MemberOverviewData {
   today: string;
   isMonthMealOff?: boolean;
   firstBazaarDate?: string | null;
+  totalBazaarExpenses?: number;
+  bazaarCount?: number;
+  isLunchLocked?: boolean;
+  isDinnerLocked?: boolean;
+  lunchMenu?: string;
+  dinnerMenu?: string;
 }
 
 export interface CalendarActivityData {
