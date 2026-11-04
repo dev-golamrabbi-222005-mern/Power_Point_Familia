@@ -1,6 +1,6 @@
 import React from "react";
 
-export type LogoSize = 'sm' | 'md' | 'lg';
+export type LogoSize = 'sm' | 'md' | 'lg' | 'responsive';
 
 interface PPFLogoProps {
   className?: string;
@@ -12,51 +12,63 @@ interface PPFLogoProps {
 export const Logo: React.FC<PPFLogoProps> = ({
   className = "",
   onClick,
-  size = 'md',
+  size = 'responsive',
   ...props
 }) => {
-  // Size Configurations for sm, md, lg (Mobile & Desktop responsive)
+  // Size Configurations for responsive, sm, md, lg (Mobile & Desktop responsive)
   // Preserves 100% exact design, gradients, colors, typography and proportions
   const sizeMap = {
+    responsive: {
+      container: 'px-2.5 py-1 sm:px-3 sm:py-1 md:px-3.5 md:py-1.5 gap-2 sm:gap-2 md:gap-2.5 rounded-xl',
+      pText: 'text-2xl sm:text-2xl md:text-3xl font-black',
+      pShadow: 'drop-shadow-[0_2px_8px_rgba(56,189,248,0.3)]',
+      stackedBox: 'h-5 sm:h-5 md:h-6 text-[7.5px] sm:text-[8px] md:text-[9.5px] pl-0.5',
+      divider: 'h-4 sm:h-4 md:h-5 w-[1.5px]',
+      familiaText: 'text-sm sm:text-sm md:text-base font-black',
+      familiaShadow: 'drop-shadow-[0_2px_8px_rgba(249,115,22,0.25)]',
+      subText: 'text-[6px] sm:text-[6.5px] md:text-[7px] -mt-0.5',
+    },
     sm: {
-      container: 'px-2.5 py-1 gap-2 rounded-xl',
-      pText: 'text-2xl md:text-3xl',
+      container: 'px-2 py-0.5 sm:px-2.5 sm:py-1 gap-1.5 sm:gap-2 rounded-xl',
+      pText: 'text-2xl md:text-3xl font-black',
       pShadow: 'drop-shadow-[0_2px_6px_rgba(56,189,248,0.3)]',
       stackedBox: 'h-5 md:h-6 text-[7.5px] md:text-[9px] pl-0.5',
       divider: 'h-4 md:h-5 w-[1.5px]',
-      familiaText: 'text-sm md:text-base',
+      familiaText: 'text-sm md:text-base font-black',
       familiaShadow: 'drop-shadow-[0_2px_6px_rgba(249,115,22,0.25)]',
       subText: 'text-[6px] md:text-[7px] -mt-0.5',
     },
     md: {
-      container: 'px-3.5 py-1.5 md:px-4 md:py-2 gap-2.5 md:gap-3 rounded-2xl',
-      pText: 'text-3xl sm:text-4xl md:text-5xl',
+      container: 'px-3.5 py-1.5 md:px-4 md:py-1.5 gap-2.5 md:gap-3 rounded-xl sm:rounded-2xl',
+      pText: 'text-3xl font-black',
       pShadow: 'drop-shadow-[0_2px_10px_rgba(56,189,248,0.3)]',
-      stackedBox: 'h-7 sm:h-8 md:h-9 text-[10px] sm:text-[11px] md:text-[13px] pl-0.5',
-      divider: 'h-5 sm:h-6 w-[2px]',
-      familiaText: 'text-lg sm:text-xl md:text-2xl',
+      stackedBox: 'h-6 sm:h-7 text-[9px] sm:text-[10px] pl-0.5',
+      divider: 'h-5 sm:h-5.5 w-[1.5px] sm:w-[2px]',
+      familiaText: 'text-base sm:text-lg font-black',
       familiaShadow: 'drop-shadow-[0_2px_10px_rgba(249,115,22,0.25)]',
-      subText: 'text-[7.5px] sm:text-[8.5px] -mt-0.5 md:-mt-1',
+      subText: 'text-[7px] sm:text-[7.5px] -mt-0.5',
     },
     lg: {
-      container: 'px-5 py-2.5 md:px-6 md:py-3 gap-3.5 md:gap-4 rounded-3xl',
-      pText: 'text-5xl md:text-6xl',
+      container: 'px-5 py-2.5 sm:px-6 sm:py-3 gap-3.5 sm:gap-4 rounded-2xl sm:rounded-3xl',
+      pText: 'text-4xl sm:text-5xl font-black',
       pShadow: 'drop-shadow-[0_2px_14px_rgba(56,189,248,0.35)]',
-      stackedBox: 'h-10 md:h-12 text-[13px] md:text-[16px] pl-1',
-      divider: 'h-8 md:h-10 w-[2.5px]',
-      familiaText: 'text-2xl md:text-3xl',
+      stackedBox: 'h-8 sm:h-10 text-[10px] sm:text-[13px] pl-1',
+      divider: 'h-7 sm:h-9 w-[2px]',
+      familiaText: 'text-xl sm:text-2xl font-black',
       familiaShadow: 'drop-shadow-[0_2px_14px_rgba(249,115,22,0.3)]',
-      subText: 'text-[10px] md:text-[12px] -mt-1 md:-mt-1.5',
+      subText: 'text-[8px] sm:text-[10px] -mt-1',
     },
   };
 
-  const currentSize = sizeMap[(size as LogoSize)] || sizeMap.md;
+  const currentSize = sizeMap[(size as LogoSize)] || sizeMap.responsive;
+  const hasCustomDisplay = /\b(hidden|block|flex|inline-flex|inline-block)\b/.test(className);
+  const baseDisplay = hasCustomDisplay ? '' : 'inline-flex';
 
   return (
     <div
       onClick={onClick}
       {...props}
-      className={`inline-flex items-center bg-[#0F0F0F] border border-zinc-800/80 select-none cursor-pointer transition-all hover:border-zinc-700/80 ${currentSize.container} ${className}`}
+      className={`${baseDisplay} items-center bg-[#0F0F0F] border border-zinc-800/80 select-none cursor-pointer transition-all hover:border-zinc-700/80 ${currentSize.container} ${className}`}
     >
       {/* POWER POINT Typography Block */}
       <div className="flex items-center font-black tracking-tight leading-none">

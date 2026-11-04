@@ -36,7 +36,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center group">
-            <PPFLogo size="md" className="transition-transform group-hover:scale-105" />
+            <PPFLogo size="responsive" className="transition-transform group-hover:scale-105" />
           </Link>
 
           {/* Nav Links */}

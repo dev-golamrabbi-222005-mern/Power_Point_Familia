@@ -34,6 +34,10 @@ export async function GET(req: NextRequest) {
     const approvedMembers = db.users.filter(u => u.status === 'approved');
     const memberCount = Math.max(approvedMembers.length, 1);
 
+    const dbUser = db.users.find(u => u.id === userId);
+    const assignedFixed = dbUser?.fixedCosts;
+    const assignedPastDue = dbUser?.pastMonthDue || 0;
+
     const utilityTypes: { type: FixedUtilityType; label: string }[] = [
       { type: 'rent', label: 'Basha Vara (Rent)' },
       { type: 'electricity', label: 'Current Bill (Electricity)' },
@@ -42,9 +46,12 @@ export async function GET(req: NextRequest) {
       { type: 'servant_fee', label: 'Servant Fee' },
     ];
 
-    const dbUser = db.users.find(u => u.id === userId);
-    const assignedFixed = dbUser?.fixedCosts;
-    const assignedPastDue = dbUser?.pastMonthDue || 0;
+    if (assignedFixed?.extraCost && assignedFixed.extraCost > 0) {
+      utilityTypes.push({
+        type: 'extra_cost',
+        label: assignedFixed.extraCostReason ? `Extra: ${assignedFixed.extraCostReason}` : 'Extra Costs',
+      });
+    }
 
     let totalFixedCostPaid = 0;
 
@@ -60,6 +67,7 @@ export async function GET(req: NextRequest) {
         if (type === 'wifi' && assignedFixed.wifi !== undefined) share = assignedFixed.wifi;
         if (type === 'gas' && assignedFixed.gas !== undefined) share = assignedFixed.gas;
         if (type === 'servant_fee' && assignedFixed.servant !== undefined) share = assignedFixed.servant;
+        if (type === 'extra_cost' && assignedFixed.extraCost !== undefined) share = assignedFixed.extraCost;
       }
 
       // If this month has Total Meal Off:

@@ -34,8 +34,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-[#0a0a0a] text-zinc-100 min-h-screen flex flex-col font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        className="bg-[#0a0a0a] text-zinc-100 min-h-screen flex flex-col font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200"
+      >
         <NextAuthProvider>
           <AuthProvider>
             {children}

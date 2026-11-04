@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Receipt } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Receipt, Plus, Sparkles } from 'lucide-react';
 import { User as UserType } from '@/src/types';
 
 interface ManagerFixedCostsModalProps {
@@ -16,6 +16,10 @@ interface ManagerFixedCostsModalProps {
   setAssignGas: (v: string) => void;
   assignServant: string;
   setAssignServant: (v: string) => void;
+  assignExtraCost: string;
+  setAssignExtraCost: (v: string) => void;
+  assignExtraReason: string;
+  setAssignExtraReason: (v: string) => void;
   assignPastDue: string;
   setAssignPastDue: (v: string) => void;
   assigningFixed: boolean;
@@ -35,15 +39,29 @@ export const ManagerFixedCostsModal: React.FC<ManagerFixedCostsModalProps> = ({
   setAssignGas,
   assignServant,
   setAssignServant,
+  assignExtraCost,
+  setAssignExtraCost,
+  assignExtraReason,
+  setAssignExtraReason,
   assignPastDue,
   setAssignPastDue,
   assigningFixed,
 }) => {
+  const [showExtraField, setShowExtraField] = useState(Boolean(assignExtraCost || assignExtraReason));
+
+  useEffect(() => {
+    if (assignExtraCost || assignExtraReason) {
+      setShowExtraField(true);
+    } else {
+      setShowExtraField(false);
+    }
+  }, [user, assignExtraCost, assignExtraReason]);
+
   if (!user) return null;
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-100 p-2 rounded-full hover:bg-zinc-800 transition-colors"
@@ -52,7 +70,7 @@ export const ManagerFixedCostsModal: React.FC<ManagerFixedCostsModalProps> = ({
         </button>
 
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-2xl">
+          <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-2xl shrink-0">
             <Receipt className="w-6 h-6" />
           </div>
           <div>
@@ -61,7 +79,8 @@ export const ManagerFixedCostsModal: React.FC<ManagerFixedCostsModalProps> = ({
           </div>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-3.5">
+          {/* 2x3 Grid of Standard Fixed Costs */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-zinc-400 mb-1">House Rent (৳)</label>
@@ -130,6 +149,64 @@ export const ManagerFixedCostsModal: React.FC<ManagerFixedCostsModalProps> = ({
               />
             </div>
           </div>
+
+          {/* Full Width + Add Extra Cost Button & Expandable Fields */}
+          {!showExtraField ? (
+            <button
+              type="button"
+              onClick={() => setShowExtraField(true)}
+              className="w-full py-2.5 px-3 bg-zinc-950/80 hover:bg-zinc-800/80 border border-dashed border-zinc-700/80 hover:border-emerald-500/60 rounded-xl text-xs font-bold text-zinc-300 hover:text-emerald-400 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+            >
+              <Plus className="w-4 h-4 text-emerald-400" />
+              <span>Add Extra Cost</span>
+            </button>
+          ) : (
+            <div className="p-3 bg-zinc-950/90 border border-zinc-800 rounded-2xl space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  Extra Cost Details
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowExtraField(false);
+                    setAssignExtraCost('');
+                    setAssignExtraReason('');
+                  }}
+                  className="text-[10px] text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1">
+                  Cost Reason / Description (কি জন্য)
+                </label>
+                <input
+                  type="text"
+                  value={assignExtraReason}
+                  onChange={(e) => setAssignExtraReason(e.target.value)}
+                  placeholder="e.g. ময়লা বিল / পানির ফিল্টার / মেরামত"
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1">
+                  Extra Amount (কয় টাকা - ৳)
+                </label>
+                <input
+                  type="number"
+                  value={assignExtraCost}
+                  onChange={(e) => setAssignExtraCost(e.target.value)}
+                  placeholder="e.g. 150"
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-100 text-sm focus:outline-none focus:border-purple-500"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-3">
             <button

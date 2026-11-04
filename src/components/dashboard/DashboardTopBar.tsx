@@ -58,7 +58,23 @@ export default function DashboardTopBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <header className="sticky top-0 z-40 w-full bg-[#0a0a0a]/90 backdrop-blur-md border-b border-zinc-800/80 transition-all">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 h-14 flex items-center justify-between gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+            <Link href="/dashboard" className="shrink-0 flex items-center">
+              <Logo size="responsive" />
+            </Link>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <div className="w-20 h-7 bg-zinc-900/60 border border-zinc-800/60 rounded-xl animate-pulse" />
+            <div className="w-8 h-8 bg-zinc-900/60 border border-zinc-800/60 rounded-xl animate-pulse" />
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   // Determine current badge
   const isManagerMode = user.role === 'manager' && activeRoleView === 'manager';
@@ -77,18 +93,17 @@ export default function DashboardTopBar() {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[#0a0a0a]/90 backdrop-blur-md border-b border-zinc-800/80 transition-all">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 h-14 flex items-center justify-between gap-1.5 sm:gap-3">
         {/* Left side: Power Point Familia branding & Role badge */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <Link href="/dashboard" className="shrink-0 flex items-center">
-            <Logo size="sm" className="sm:hidden" />
-            <Logo size="md" className="hidden sm:inline-flex" />
+            <Logo size="responsive" />
           </Link>
 
           {/* Role Badge */}
           <div className="flex items-center gap-1.5 shrink-0">
             {isAdmin && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center gap-1">
+              <span className="hidden sm:inline-flex px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-purple-500/15 text-purple-400 border border-purple-500/30 items-center gap-1">
                 <ShieldAlert className="w-3 h-3" />
                 Admin
               </span>
@@ -98,7 +113,7 @@ export default function DashboardTopBar() {
               <button
                 onClick={toggleRoleView}
                 title="Click to toggle between Manager tools and Member view"
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
+                className={`px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
                   activeRoleView === 'manager'
                     ? 'bg-teal-500/15 text-teal-400 border-teal-500/30 hover:bg-teal-500/25'
                     : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
@@ -107,20 +122,22 @@ export default function DashboardTopBar() {
                 {activeRoleView === 'manager' ? (
                   <>
                     <ChefHat className="w-3 h-3" />
-                    <span>Manager Mode</span>
+                    <span className="hidden sm:inline">Manager Mode</span>
+                    <span className="sm:hidden">Manager</span>
                   </>
                 ) : (
                   <>
                     <UserCheck className="w-3 h-3" />
-                    <span>Member Mode</span>
+                    <span className="hidden sm:inline">Member Mode</span>
+                    <span className="sm:hidden">Member</span>
                   </>
                 )}
-                <span className="text-[9px] opacity-60 ml-0.5 underline">Switch</span>
+                <span className="text-[8px] sm:text-[9px] opacity-60 ml-0.5 underline">Switch</span>
               </button>
             )}
 
             {user.role === 'member' && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+              <span className="hidden sm:inline-flex px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 items-center gap-1">
                 <UserCheck className="w-3 h-3" />
                 Member
               </span>
@@ -129,20 +146,20 @@ export default function DashboardTopBar() {
         </div>
 
         {/* Right side: Quick Balance/Meal Rate Pill + Notifications + Profile Avatar */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* Live Meal Rate Pill */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900/90 border border-zinc-800 rounded-xl text-xs font-bold shadow-xs">
-            <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
-            <span className="text-zinc-200">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1 bg-zinc-900/90 border border-zinc-800 rounded-xl text-[11px] sm:text-xs font-bold shadow-xs shrink-0">
+            <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20 shrink-0" />
+            <span className="text-zinc-200 whitespace-nowrap">
               {liveMealRate > 0 ? (
                 <>
                   ৳{liveMealRate.toFixed(1)}
-                  <span className="text-[10px] text-zinc-400 font-normal">/Meal</span>
+                  <span className="hidden md:inline text-[10px] text-zinc-400 font-normal">/Meal</span>
                 </>
               ) : (
                 <>
-                  ৳0.00
-                  <span className="text-[10px] text-zinc-400 font-normal"> (Est: ৳{baseRate})</span>
+                  ৳0.0
+                  <span className="hidden md:inline text-[10px] text-zinc-400 font-normal"> (Est: ৳{baseRate})</span>
                 </>
               )}
             </span>
@@ -152,10 +169,10 @@ export default function DashboardTopBar() {
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-              className="relative p-2 text-zinc-400 hover:text-zinc-100 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl transition-all cursor-pointer"
+              className="relative p-1.5 sm:p-2 text-zinc-400 hover:text-zinc-100 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl transition-all cursor-pointer flex items-center justify-center"
               title="Notifications & Alerts"
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="w-4 h-4 shrink-0" />
               {totalNotifCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-zinc-950 font-black text-[9px] rounded-full flex items-center justify-center animate-pulse">
                   {totalNotifCount}

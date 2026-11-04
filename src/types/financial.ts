@@ -29,7 +29,7 @@ export interface WeeklyPayment {
   userName?: string; // Hydrated
 }
 
-export type FixedUtilityType = 'rent' | 'electricity' | 'wifi' | 'gas' | 'servant_fee';
+export type FixedUtilityType = 'rent' | 'electricity' | 'wifi' | 'gas' | 'servant_fee' | 'extra_cost';
 
 export interface SharedBill {
   id: string;

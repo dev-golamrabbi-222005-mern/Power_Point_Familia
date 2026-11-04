@@ -7,6 +7,13 @@ import { User } from '@/src/types';
 const JWT_SECRET = process.env.JWT_SECRET || 'power_point_familia_super_secure_jwt_secret_key_2026';
 const DEFAULT_ADMIN = (process.env.DEFAULT_ADMIN_EMAIL || 'g.rabbi.dev@gmail.com').toLowerCase().trim();
 
+// Local development safety guard: Never let localhost redirect to production Vercel
+if (process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
+  if (!process.env.NEXTAUTH_URL || process.env.NEXTAUTH_URL.includes('vercel.app')) {
+    process.env.NEXTAUTH_URL = 'http://localhost:3000';
+  }
+}
+
 const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -183,6 +190,28 @@ const authOptions: NextAuthOptions = {
         (session as any).jwtToken = (token as any).jwtToken;
       }
       return session;
+    },
+
+    async redirect({ url, baseUrl }) {
+      const isDev = process.env.NODE_ENV === 'development' && !process.env.VERCEL;
+      const effectiveBase = isDev ? 'http://localhost:3000' : baseUrl;
+
+      if (url.startsWith('/')) {
+        return `${effectiveBase}${url}`;
+      }
+
+      try {
+        const parsedUrl = new URL(url);
+        if (
+          parsedUrl.origin === effectiveBase ||
+          parsedUrl.hostname === 'localhost' ||
+          parsedUrl.hostname === '127.0.0.1'
+        ) {
+          return url;
+        }
+      } catch {}
+
+      return effectiveBase;
     },
   },
   secret: process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'power_point_familia_super_secure_jwt_secret_key_2026',

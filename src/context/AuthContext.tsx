@@ -19,25 +19,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
 
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('familia_token');
-    }
-    return null;
-  });
-
-  const [user, setUser] = useState<User | null>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('familia_user');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {}
-      }
-    }
-    return null;
-  });
-
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Sync NextAuth session with local JWT auth state
@@ -105,6 +88,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Synchronously restore cached user & token on client mount
+    try {
+      const storedToken = localStorage.getItem('familia_token');
+      const storedUser = localStorage.getItem('familia_user');
+      if (storedToken) {
+        setToken(storedToken);
+      }
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (e) {
+      console.error('Failed to parse cached user', e);
+    }
     refreshUser();
   }, []);
 

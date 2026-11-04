@@ -18,6 +18,8 @@ export interface User {
     wifi?: number;
     gas?: number;
     servant?: number;
+    extraCost?: number;
+    extraCostReason?: string;
     customFixedTotal?: number;
   };
   image?: string;

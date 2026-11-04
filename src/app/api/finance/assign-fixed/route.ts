@@ -22,13 +22,25 @@ export async function POST(req: NextRequest) {
     }
 
     // Save fixed costs breakdown and past month due on target user object
+    const extraCost = Number(fixedCosts?.extraCost || 0);
+    const extraCostReason = (fixedCosts?.extraCostReason || '').trim();
+
     const newFixedCosts = {
       rent: Number(fixedCosts?.rent || 0),
       electricity: Number(fixedCosts?.electricity || 0),
       wifi: Number(fixedCosts?.wifi || 0),
       gas: Number(fixedCosts?.gas || 0),
       servant: Number(fixedCosts?.servant || 0),
-      customFixedTotal: (Number(fixedCosts?.rent || 0) + Number(fixedCosts?.electricity || 0) + Number(fixedCosts?.wifi || 0) + Number(fixedCosts?.gas || 0) + Number(fixedCosts?.servant || 0))
+      extraCost,
+      extraCostReason,
+      customFixedTotal: (
+        Number(fixedCosts?.rent || 0) +
+        Number(fixedCosts?.electricity || 0) +
+        Number(fixedCosts?.wifi || 0) +
+        Number(fixedCosts?.gas || 0) +
+        Number(fixedCosts?.servant || 0) +
+        extraCost
+      )
     };
 
     targetUser.fixedCosts = newFixedCosts;

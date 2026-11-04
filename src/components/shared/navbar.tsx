@@ -14,8 +14,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLoginClick, onLogout }) 
     <nav className="bg-[#0f0f0f]/95 backdrop-blur-md border-b border-zinc-800 sticky top-0 z-40 py-4 shadow-xl shadow-black/15">
       <div className="container-custom flex justify-between items-center">
         <Link href="/" className="shrink-0 flex items-center">
-          <Logo size="sm" className="sm:hidden" />
-          <Logo size="md" className="hidden sm:inline-flex" />
+          <Logo size="responsive" />
         </Link>
 
         <div className="flex items-center gap-4">

@@ -16,7 +16,8 @@ import {
   Lock, 
   X, 
   CreditCard,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
 import { FinanceOverviewData, FixedExpenseItem, FixedUtilityType } from '@/src/types';
 import { showSuccessAlert, showErrorAlert, showWarningAlert } from '@/src/lib/alerts';
@@ -155,6 +156,8 @@ export default function FinanceTab({ token, onError }: FinanceTabProps) {
         return <Flame className="w-5 h-5 text-orange-500" />;
       case 'servant_fee':
         return <UserCheck className="w-5 h-5 text-emerald-500" />;
+      case 'extra_cost':
+        return <Sparkles className="w-5 h-5 text-purple-400" />;
       default:
         return <Receipt className="w-5 h-5 text-zinc-500" />;
     }

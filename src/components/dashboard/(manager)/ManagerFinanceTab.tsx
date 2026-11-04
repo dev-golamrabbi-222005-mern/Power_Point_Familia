@@ -76,6 +76,8 @@ export default function ManagerFinanceTab({
   const [assignWifi, setAssignWifi] = useState("");
   const [assignGas, setAssignGas] = useState("");
   const [assignServant, setAssignServant] = useState("");
+  const [assignExtraCost, setAssignExtraCost] = useState("");
+  const [assignExtraReason, setAssignExtraReason] = useState("");
   const [assignPastDue, setAssignPastDue] = useState("");
   const [assigningFixed, setAssigningFixed] = useState(false);
 
@@ -86,6 +88,8 @@ export default function ManagerFinanceTab({
     setAssignWifi(usr.fixedCosts?.wifi !== undefined && usr.fixedCosts.wifi > 0 ? usr.fixedCosts.wifi.toString() : "");
     setAssignGas(usr.fixedCosts?.gas !== undefined && usr.fixedCosts.gas > 0 ? usr.fixedCosts.gas.toString() : "");
     setAssignServant(usr.fixedCosts?.servant !== undefined && usr.fixedCosts.servant > 0 ? usr.fixedCosts.servant.toString() : "");
+    setAssignExtraCost(usr.fixedCosts?.extraCost !== undefined && usr.fixedCosts.extraCost > 0 ? usr.fixedCosts.extraCost.toString() : "");
+    setAssignExtraReason(usr.fixedCosts?.extraCostReason || "");
     setAssignPastDue(usr.pastMonthDue !== undefined && usr.pastMonthDue > 0 ? usr.pastMonthDue.toString() : "");
   };
 
@@ -108,6 +112,8 @@ export default function ManagerFinanceTab({
             wifi: Number(assignWifi || 0),
             gas: Number(assignGas || 0),
             servant: Number(assignServant || 0),
+            extraCost: Number(assignExtraCost || 0),
+            extraCostReason: assignExtraReason.trim(),
           },
           pastMonthDue: Number(assignPastDue || 0),
         }),
@@ -236,7 +242,8 @@ export default function ManagerFinanceTab({
               Number(member.fixedCosts.electricity || 0) +
               Number(member.fixedCosts.wifi || 0) +
               Number(member.fixedCosts.gas || 0) +
-              Number(member.fixedCosts.servant || 0);
+              Number(member.fixedCosts.servant || 0) +
+              Number(member.fixedCosts.extraCost || 0);
             if (sumIndividual > 0) assignedTotal = sumIndividual;
           }
         }
@@ -732,6 +739,10 @@ export default function ManagerFinanceTab({
         setAssignGas={setAssignGas}
         assignServant={assignServant}
         setAssignServant={setAssignServant}
+        assignExtraCost={assignExtraCost}
+        setAssignExtraCost={setAssignExtraCost}
+        assignExtraReason={assignExtraReason}
+        setAssignExtraReason={setAssignExtraReason}
         assignPastDue={assignPastDue}
         setAssignPastDue={setAssignPastDue}
         assigningFixed={assigningFixed}
