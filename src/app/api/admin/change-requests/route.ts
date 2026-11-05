@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'type and details are required.' }, { status: 400 });
     }
 
-    if (type !== 'meal_off_month' && !targetUserId) {
+    if (type !== 'meal_off_month' && type !== 'pay_fixed_bill' && !targetUserId) {
       return NextResponse.json({ message: 'targetUserId is required.' }, { status: 400 });
     }
 
@@ -40,7 +40,18 @@ export async function POST(req: NextRequest) {
     const db = getDb();
 
     const targetUser = targetUserId ? db.users.find(u => u.id === targetUserId) : null;
-    const targetUserName = targetUser?.name || (type === 'meal_off_month' ? 'Entire Mess (Total Meal Off)' : 'Member');
+    let targetUserName = targetUser?.name || 'Member';
+    if (type === 'meal_off_month') targetUserName = 'Entire Mess (Total Meal Off)';
+    if (type === 'pay_fixed_bill') targetUserName = newValue?.label || 'Fixed Utility';
+
+    if (type === 'pay_fixed_bill') {
+      const billMonth = newValue?.month || new Date().toISOString().slice(0, 7);
+      const billType = newValue?.billType || 'rent';
+      const bill = db.sharedBills.find(b => b.month === billMonth && b.type === billType);
+      if (bill) {
+        bill.paidStatus = 'pending_approval';
+      }
+    }
 
     const newRequest: AdminChangeRequest = {
       id: `req-${Date.now()}`,
@@ -73,7 +84,7 @@ export async function POST(req: NextRequest) {
 // PUT: Admin approves or rejects a change request
 export async function PUT(req: NextRequest) {
   try {
-    const { error } = authenticate(req, ['admin']);
+    const { user, error } = authenticate(req, ['admin']);
     if (error) return error;
 
     const { requestId, action } = await req.json(); // action: 'approved' | 'rejected'
@@ -97,7 +108,38 @@ export async function PUT(req: NextRequest) {
 
     // If approved, apply the requested changes to DB
     if (action === 'approved') {
-      if (item.type === 'meal_off_month') {
+      if (item.type === 'pay_fixed_bill') {
+        const billMonth = item.newValue?.month || item.requestedAt.slice(0, 7);
+        const billType = item.newValue?.billType || 'rent';
+        let bill = db.sharedBills.find(b => b.month === billMonth && b.type === billType);
+        if (bill) {
+          bill.paidStatus = 'paid';
+          bill.paidAt = new Date().toISOString();
+          bill.paidAmount = Number(item.newValue?.amount || bill.totalAmount);
+          bill.paymentMethod = item.newValue?.paymentMethod || 'Cash';
+          bill.trxId = item.newValue?.trxId || '';
+          bill.approvedBy = user?.name || 'Admin';
+          bill.remarks = item.newValue?.remarks || '';
+        } else {
+          bill = {
+            id: `bill-${billType}-${Date.now()}`,
+            month: billMonth,
+            type: billType,
+            label: item.newValue?.label || billType,
+            totalAmount: Number(item.newValue?.amount || 0),
+            dueDate: new Date().toISOString().split('T')[0],
+            createdAt: new Date().toISOString(),
+            paidStatus: 'paid',
+            paidAt: new Date().toISOString(),
+            paidAmount: Number(item.newValue?.amount || 0),
+            paymentMethod: item.newValue?.paymentMethod || 'Cash',
+            trxId: item.newValue?.trxId || '',
+            approvedBy: user?.name || 'Admin',
+            remarks: item.newValue?.remarks || '',
+          };
+          db.sharedBills.push(bill);
+        }
+      } else if (item.type === 'meal_off_month') {
         const targetMonth = item.newValue?.month || item.details?.slice(0, 7) || new Date().toISOString().slice(0, 7);
         if (targetMonth) {
           if (!db.settings.closedMealMonths) db.settings.closedMealMonths = [];
@@ -115,6 +157,13 @@ export async function PUT(req: NextRequest) {
           }
           if (item.newValue.status) targetUser.status = item.newValue.status;
         }
+      }
+    } else if (action === 'rejected' && item.type === 'pay_fixed_bill') {
+      const billMonth = item.newValue?.month || item.requestedAt.slice(0, 7);
+      const billType = item.newValue?.billType || 'rent';
+      const bill = db.sharedBills.find(b => b.month === billMonth && b.type === billType);
+      if (bill) {
+        bill.paidStatus = 'unpaid';
       }
     }
 

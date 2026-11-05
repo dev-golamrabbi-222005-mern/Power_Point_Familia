@@ -36,6 +36,13 @@ const DEFAULT_SETTINGS: SystemSettings = {
   autoBookMeals: true,
   currentPairIndex: 0,
   financeVisibilityDurationMinutes: 60,
+  fixedUtilityTargets: {
+    rent: 19000,
+    electricity: 3800,
+    wifi: 650,
+    gas: 2060,
+    servant: 4000,
+  },
 };
 
 const MONGODB_URI = process.env.MONGODB_URI;

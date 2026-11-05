@@ -13,6 +13,43 @@ export async function GET(req: NextRequest) {
 
     // Get current month's shared bills
     const currentMonth = new Date().toISOString().slice(0, 7);
+
+    // Auto-ensure default 5 bills exist for the month
+    const targets = db.settings?.fixedUtilityTargets || {
+      rent: 19000,
+      electricity: 3800,
+      wifi: 650,
+      gas: 2060,
+      servant: 4000,
+    };
+    const defaultBills = [
+      { type: 'rent', label: 'House Rent (বাড়ি ভাড়া)', amount: targets.rent },
+      { type: 'electricity', label: 'Current Bill (বিদ্যুৎ বিল)', amount: targets.electricity },
+      { type: 'wifi', label: 'WiFi Bill (ইন্টারনেট বিল)', amount: targets.wifi },
+      { type: 'gas', label: 'Gas Bill (গ্যাস বিল)', amount: targets.gas },
+      { type: 'servant_fee', label: 'Servant Fee (বুয়া বিল)', amount: targets.servant },
+    ];
+
+    let hasAdded = false;
+    for (const d of defaultBills) {
+      if (!db.sharedBills.some(b => b.month === currentMonth && b.type === d.type)) {
+        db.sharedBills.push({
+          id: `bill-${d.type}-${Date.now()}`,
+          month: currentMonth,
+          type: d.type as any,
+          label: d.label,
+          totalAmount: d.amount,
+          dueDate: new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString(),
+          paidStatus: 'unpaid',
+        });
+        hasAdded = true;
+      }
+    }
+    if (hasAdded) {
+      await saveDb(db);
+    }
+
     const bills = db.sharedBills.filter(b => b.month === currentMonth);
 
     // Count active approved members to divide bills
@@ -73,7 +110,7 @@ export async function POST(req: NextRequest) {
       db.sharedBills[existingIndex].totalAmount = Number(totalAmount);
       if (label) db.sharedBills[existingIndex].label = label;
       if (dueDate) db.sharedBills[existingIndex].dueDate = dueDate;
-      saveDb(db);
+      await saveDb(db);
       return NextResponse.json({
         bill: db.sharedBills[existingIndex],
         message: `${db.sharedBills[existingIndex].label} updated for ${month}.`
@@ -91,7 +128,7 @@ export async function POST(req: NextRequest) {
     };
 
     db.sharedBills.push(newBill);
-    saveDb(db);
+    await saveDb(db);
 
     return NextResponse.json({ bill: newBill, message: `${newBill.label} created.` }, { status: 201 });
   } catch (error) {

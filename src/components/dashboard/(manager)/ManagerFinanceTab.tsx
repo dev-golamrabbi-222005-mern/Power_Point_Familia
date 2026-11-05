@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { ManagerFixedCostsModal } from "./ManagerFixedCostsModal";
+import { FixedUtilitiesPoolCard } from "./FixedUtilitiesPoolCard";
+import { PayFixedBillModal } from "./PayFixedBillModal";
 import {
   DollarSign,
   Wallet,
@@ -81,6 +83,41 @@ export default function ManagerFinanceTab({
   const [assignPastDue, setAssignPastDue] = useState("");
   const [assigningFixed, setAssigningFixed] = useState(false);
 
+  // Fixed Utilities Pool & Pay Modal State
+  const [rawSharedBills, setRawSharedBills] = useState<any[]>([]);
+  const [rawBillPayments, setRawBillPayments] = useState<any[]>([]);
+  const [rawApprovedDeposits, setRawApprovedDeposits] = useState<any[]>([]);
+  const [pendingChangeRequests, setPendingChangeRequests] = useState<any[]>([]);
+  const [fixedTargets, setFixedTargets] = useState<{
+    rent?: number;
+    electricity?: number;
+    wifi?: number;
+    gas?: number;
+    servant?: number;
+  }>({
+    rent: 19000,
+    electricity: 3800,
+    wifi: 650,
+    gas: 2060,
+    servant: 4000,
+  });
+  const [currentMonthKey, setCurrentMonthKey] = useState(
+    new Date().toISOString().split("T")[0].slice(0, 7)
+  );
+  const [totalFixedBudget, setTotalFixedBudget] = useState(29510);
+  const [paidBillsCount, setPaidBillsCount] = useState(0);
+
+  // Modal State
+  const [payModalBill, setPayModalBill] = useState<{
+    type: string;
+    label: string;
+    totalAmount: number;
+    month: string;
+  } | null>(null);
+  const [payModalCollected, setPayModalCollected] = useState(0);
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [submittingBillPay, setSubmittingBillPay] = useState(false);
+
   const openAssignFixedModal = (usr: UserType) => {
     setFixedAssignUser(usr);
     setAssignRent(usr.fixedCosts?.rent !== undefined && usr.fixedCosts.rent > 0 ? usr.fixedCosts.rent.toString() : "");
@@ -136,6 +173,68 @@ export default function ManagerFinanceTab({
     }
   };
 
+  const handleOpenPayModal = (
+    bill: { type: string; label: string; totalAmount: number; month: string },
+    collected: number
+  ) => {
+    setPayModalBill(bill);
+    setPayModalCollected(collected);
+    setIsPayModalOpen(true);
+  };
+
+  const handlePayBillSubmit = async (details: {
+    paymentMethod: string;
+    trxId: string;
+    remarks: string;
+  }) => {
+    if (!payModalBill) return;
+    try {
+      setSubmittingBillPay(true);
+      const res = await fetch("/api/admin/change-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          type: "pay_fixed_bill",
+          targetUserId: "mess_utility",
+          targetUserName: `${payModalBill.label} Settlement`,
+          details: `Manager requested to pay ${payModalBill.label} of ৳${payModalBill.totalAmount.toLocaleString()} (${payModalBill.month})`,
+          oldValue: {
+            billType: payModalBill.type,
+            status: "unpaid",
+            collected: payModalCollected,
+          },
+          newValue: {
+            billType: payModalBill.type,
+            label: payModalBill.label,
+            month: payModalBill.month,
+            amount: payModalBill.totalAmount,
+            paymentMethod: details.paymentMethod,
+            trxId: details.trxId,
+            remarks: details.remarks,
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to submit request");
+
+      setIsPayModalOpen(false);
+      setPayModalBill(null);
+      await showSuccessAlert(
+        "Payment Request Sent!",
+        data.message || "Disbursement request sent to Admin for approval."
+      );
+      fetchFinanceData();
+    } catch (err: any) {
+      showErrorAlert("Error", err.message || "Error submitting payment request");
+    } finally {
+      setSubmittingBillPay(false);
+    }
+  };
+
   const fetchFinanceData = async () => {
     try {
       setLoading(true);
@@ -147,6 +246,8 @@ export default function ManagerFinanceTab({
         expensesRes,
         billsRes,
         paymentsRes,
+        settingsRes,
+        requestsRes,
       ] = await Promise.all([
         fetch("/api/members", {
           headers: { Authorization: `Bearer ${token}` },
@@ -172,6 +273,9 @@ export default function ManagerFinanceTab({
         fetch("/api/settings", {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch("/api/admin/change-requests", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
       if (!membersRes.ok) throw new Error("Failed to load members");
@@ -183,14 +287,18 @@ export default function ManagerFinanceTab({
       const expenses: any[] = expensesRes.ok ? await expensesRes.json() : [];
       const utilitiesData = billsRes.ok ? await billsRes.json() : { bills: [] };
       const billPayments: any[] = paymentsRes.ok ? await paymentsRes.json() : [];
-      const settingsData = await statsRes.json(); // settings can also be fetched
+      const settingsObj = settingsRes.ok ? await settingsRes.json() : {};
+      const requestsData: any[] = requestsRes.ok ? await requestsRes.json() : [];
 
       const currentMonth = new Date().toISOString().split("T")[0].slice(0, 7);
       const todayObj = new Date();
+      setCurrentMonthKey(currentMonth);
 
-      const settingsRes = await fetch("/api/settings", { headers: { Authorization: `Bearer ${token}` } });
-      const settingsObj = settingsRes.ok ? await settingsRes.json() : {};
       const isMonthMealOff = Boolean(settingsObj?.closedMealMonths?.includes(currentMonth));
+      if (settingsObj?.fixedUtilityTargets) {
+        setFixedTargets(settingsObj.fixedUtilityTargets);
+      }
+      setPendingChangeRequests(requestsData);
 
       // 1. Mess Meal Cost (Approved Bazaar Expenses)
       const approvedExpenses = expenses.filter(
@@ -211,12 +319,26 @@ export default function ManagerFinanceTab({
         .reduce((sum, d) => sum + d.amount, 0);
       setTotalRemainingMealCash(totalMealCashCollected - messMealCost);
 
-      // 3. Fixed Payments
+      // 3. Fixed Utilities Given (Disbursed to Landlord/Providers)
       const sharedBills: any[] = utilitiesData.bills || [];
+      setRawSharedBills(sharedBills);
+      setRawBillPayments(billPayments);
+      setRawApprovedDeposits(approvedDeposits);
+
+      const paidBills = sharedBills.filter(
+        (b) => b.month === currentMonth && b.paidStatus === "paid"
+      );
+      const totalFixedDisbursed = paidBills.reduce(
+        (sum, b) => sum + (b.totalAmount || 0),
+        0
+      );
+      setTotalFixedPaymentAmount(totalFixedDisbursed);
+      setPaidBillsCount(paidBills.length);
+
       const totalFixedMessCost = sharedBills
         .filter((b) => b.month === currentMonth)
         .reduce((sum, b) => sum + b.totalAmount, 0);
-      setTotalFixedPaymentAmount(totalFixedMessCost);
+      setTotalFixedBudget(totalFixedMessCost > 0 ? totalFixedMessCost : 29510);
 
       // Member Count
       const memberCount = Math.max(
@@ -452,19 +574,19 @@ export default function ManagerFinanceTab({
           </p>
         </div>
 
-        {/* KPI 3: Fixed Payment Amount */}
+        {/* KPI 3: Total Fixed Utilities Given */}
         <div className="bg-gradient-to-br from-indigo-500/10 via-blue-500/5 to-transparent dark:from-indigo-950/30 dark:to-zinc-900 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800/60 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
-              Total Fixed Utilities
+              Total Fixed Utilities Given
             </p>
             <Receipt className="w-5 h-5 text-indigo-500" />
           </div>
           <p className="text-2xl md:text-3xl font-extrabold text-zinc-900 dark:text-white">
-            ৳{totalFixedPaymentAmount}
+            ৳{totalFixedPaymentAmount.toLocaleString()}
           </p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            5 fixed utility bills total
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mt-1">
+            {paidBillsCount} of 5 bills paid (Total budget ৳{totalFixedBudget.toLocaleString()})
           </p>
         </div>
 
@@ -484,6 +606,17 @@ export default function ManagerFinanceTab({
           </p>
         </div>
       </div>
+
+      {/* === FIXED UTILITIES POOL & DISBURSAL CARD === */}
+      <FixedUtilitiesPoolCard
+        sharedBills={rawSharedBills}
+        billPayments={rawBillPayments}
+        approvedDeposits={rawApprovedDeposits}
+        currentMonth={currentMonthKey}
+        fixedTargets={fixedTargets}
+        pendingChangeRequests={pendingChangeRequests}
+        onOpenPayModal={handleOpenPayModal}
+      />
 
       {/* === DETAILED MEMBERS FINANCIAL LIST TABLE === */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 shadow-sm">
@@ -824,6 +957,19 @@ export default function ManagerFinanceTab({
           </div>
         </div>
       )}
+
+      {/* PAY FIXED BILL SETTLEMENT MODAL */}
+      <PayFixedBillModal
+        isOpen={isPayModalOpen}
+        onClose={() => {
+          setIsPayModalOpen(false);
+          setPayModalBill(null);
+        }}
+        bill={payModalBill}
+        collectedAmount={payModalCollected}
+        onSubmit={handlePayBillSubmit}
+        submitting={submittingBillPay}
+      />
     </div>
   );
 }

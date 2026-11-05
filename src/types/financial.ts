@@ -39,6 +39,13 @@ export interface SharedBill {
   totalAmount: number; // Total bill for all members
   dueDate: string; // YYYY-MM-DD
   createdAt: string;
+  paidStatus?: 'unpaid' | 'pending_approval' | 'paid';
+  paidAt?: string;
+  paidAmount?: number;
+  paymentMethod?: string;
+  trxId?: string;
+  approvedBy?: string;
+  remarks?: string;
 }
 
 export interface MemberBillPayment {
@@ -90,6 +97,13 @@ export interface SystemSettings {
   financeVisibilityUntil?: string; // Manager can publish finance calculations for a short window
   financeVisibilityDurationMinutes?: number;
   closedMealMonths?: string[]; // Months where full meal service is closed/off
+  fixedUtilityTargets?: {
+    rent: number;        // default: 19000
+    electricity: number; // default: 3800
+    wifi: number;        // default: 650
+    gas: number;         // default: 2060
+    servant: number;     // default: 4000
+  };
 }
 
 export interface DashboardStats {
