@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, MonthlySummary, AdminChangeRequest } from '@/src/types';
-import { ShieldCheck, CheckCircle2, Sliders, Save, AlertCircle, RefreshCw, Layers, Home, Zap, Wifi, Flame, Users, Receipt, CreditCard } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Sliders, Save, AlertCircle, RefreshCw, Layers, Home, Zap, Wifi, Flame, Users, Receipt, CreditCard, Plus } from 'lucide-react';
 import { showSuccessAlert, showErrorAlert, showConfirmAlert } from '@/src/lib/alerts';
 
 interface AdminPermissionsTabProps {
@@ -283,7 +283,7 @@ export default function AdminPermissionsTab({ token, mealRate, onRefreshSettings
           <div>
             <h3 className="font-display font-bold text-lg text-zinc-100 flex items-center gap-2">
               <Receipt className="w-5 h-5 text-indigo-400" />
-              Fixed Utility Costs Budget Settings (ফিক্সড ইউটিলিটি বিল বাজেট)
+              Fixed Utility Costs Budget Settings
             </h3>
             <p className="text-xs text-zinc-400">
               Set the monthly target amounts for the 5 core mess utility bills. Managers will collect towards these targets and request disbursement.
@@ -303,7 +303,7 @@ export default function AdminPermissionsTab({ token, mealRate, onRefreshSettings
             <div className="p-3.5 bg-zinc-900/80 rounded-xl border border-zinc-800 space-y-1.5">
               <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
                 <Home className="w-3.5 h-3.5 text-emerald-400" />
-                <span>House Rent (বাড়ি ভাড়া)</span>
+                <span>House Rent</span>
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-zinc-500 font-bold text-sm">৳</span>
@@ -324,7 +324,7 @@ export default function AdminPermissionsTab({ token, mealRate, onRefreshSettings
             <div className="p-3.5 bg-zinc-900/80 rounded-xl border border-zinc-800 space-y-1.5">
               <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-400" />
-                <span>Current Bill (বিদ্যুৎ বিল)</span>
+                <span>Current Bill</span>
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-zinc-500 font-bold text-sm">৳</span>
@@ -345,7 +345,7 @@ export default function AdminPermissionsTab({ token, mealRate, onRefreshSettings
             <div className="p-3.5 bg-zinc-900/80 rounded-xl border border-zinc-800 space-y-1.5">
               <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
                 <Wifi className="w-3.5 h-3.5 text-blue-400" />
-                <span>WiFi Bill (ইন্টারনেট বিল)</span>
+                <span>WiFi Bill</span>
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-zinc-500 font-bold text-sm">৳</span>
@@ -366,7 +366,7 @@ export default function AdminPermissionsTab({ token, mealRate, onRefreshSettings
             <div className="p-3.5 bg-zinc-900/80 rounded-xl border border-zinc-800 space-y-1.5">
               <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
                 <Flame className="w-3.5 h-3.5 text-orange-400" />
-                <span>Gas Bill (গ্যাস বিল)</span>
+                <span>Gas Bill</span>
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-zinc-500 font-bold text-sm">৳</span>
@@ -387,7 +387,7 @@ export default function AdminPermissionsTab({ token, mealRate, onRefreshSettings
             <div className="p-3.5 bg-zinc-900/80 rounded-xl border border-zinc-800 space-y-1.5">
               <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-purple-400" />
-                <span>Servant Fee (বুয়া বিল)</span>
+                <span>Servant Fee</span>
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-zinc-500 font-bold text-sm">৳</span>
@@ -438,7 +438,26 @@ export default function AdminPermissionsTab({ token, mealRate, onRefreshSettings
             {pendingRequests.map((req) => (
               <div key={req.id} className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                  {req.type === 'pay_fixed_bill' ? (
+                  {req.type === 'add_custom_utility' ? (
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded uppercase flex items-center gap-1">
+                          <Plus className="w-3 h-3" /> New Extra Utility Proposal
+                        </span>
+                        <p className="text-sm font-bold text-zinc-100">
+                          {req.newValue?.label || 'Extra Utility'}: ৳{Number(req.newValue?.amount || 0).toLocaleString()} ({req.newValue?.month})
+                        </p>
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        Manager <strong className="text-purple-400">{req.managerName}</strong> proposes adding a new utility cost of{' '}
+                        <strong className="text-emerald-400">৳{Number(req.newValue?.amount || 0).toLocaleString()}</strong> for{' '}
+                        <strong className="text-zinc-200">{req.newValue?.month}</strong>.
+                      </p>
+                      {req.newValue?.reason && (
+                        <p className="text-[11px] text-zinc-500 mt-0.5 italic">Purpose: "{req.newValue.reason}"</p>
+                      )}
+                    </div>
+                  ) : req.type === 'pay_fixed_bill' ? (
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded uppercase flex items-center gap-1">

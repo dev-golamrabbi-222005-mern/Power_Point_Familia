@@ -29,7 +29,7 @@ export interface WeeklyPayment {
   userName?: string; // Hydrated
 }
 
-export type FixedUtilityType = 'rent' | 'electricity' | 'wifi' | 'gas' | 'servant_fee' | 'extra_cost';
+export type FixedUtilityType = 'rent' | 'electricity' | 'wifi' | 'gas' | 'servant_fee' | 'extra_cost' | string;
 
 export interface SharedBill {
   id: string;
@@ -39,6 +39,7 @@ export interface SharedBill {
   totalAmount: number; // Total bill for all members
   dueDate: string; // YYYY-MM-DD
   createdAt: string;
+  isCustom?: boolean;
   paidStatus?: 'unpaid' | 'pending_approval' | 'paid';
   paidAt?: string;
   paidAmount?: number;

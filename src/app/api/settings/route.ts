@@ -71,11 +71,11 @@ export async function PUT(req: NextRequest) {
       // Also sync current month's sharedBills with these targets
       const currentMonth = new Date().toISOString().slice(0, 7);
       const targets = [
-        { type: 'rent', label: 'House Rent (বাড়ি ভাড়া)', amount: db.settings.fixedUtilityTargets.rent },
-        { type: 'electricity', label: 'Current Bill (বিদ্যুৎ বিল)', amount: db.settings.fixedUtilityTargets.electricity },
-        { type: 'wifi', label: 'WiFi Bill (ইন্টারনেট বিল)', amount: db.settings.fixedUtilityTargets.wifi },
-        { type: 'gas', label: 'Gas Bill (গ্যাস বিল)', amount: db.settings.fixedUtilityTargets.gas },
-        { type: 'servant_fee', label: 'Servant Fee (বুয়া বিল)', amount: db.settings.fixedUtilityTargets.servant },
+        { type: 'rent', label: 'House Rent', amount: db.settings.fixedUtilityTargets.rent },
+        { type: 'electricity', label: 'Current Bill', amount: db.settings.fixedUtilityTargets.electricity },
+        { type: 'wifi', label: 'WiFi Bill', amount: db.settings.fixedUtilityTargets.wifi },
+        { type: 'gas', label: 'Gas Bill', amount: db.settings.fixedUtilityTargets.gas },
+        { type: 'servant_fee', label: 'Servant Fee', amount: db.settings.fixedUtilityTargets.servant },
       ];
       for (const t of targets) {
         let bill = db.sharedBills.find(b => b.month === currentMonth && b.type === t.type);

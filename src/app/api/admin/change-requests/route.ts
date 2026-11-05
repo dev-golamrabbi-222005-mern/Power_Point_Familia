@@ -139,6 +139,32 @@ export async function PUT(req: NextRequest) {
           };
           db.sharedBills.push(bill);
         }
+      } else if (item.type === 'add_custom_utility') {
+        const billMonth = item.newValue?.month || item.requestedAt.slice(0, 7);
+        const customType = item.newValue?.customType || `custom_${Date.now()}`;
+        const label = item.newValue?.label || 'Extra Utility';
+        const amount = Number(item.newValue?.amount || 0);
+
+        if (!db.sharedBills) db.sharedBills = [];
+        const existingBill = db.sharedBills.find(b => b.month === billMonth && b.type === customType);
+        if (existingBill) {
+          existingBill.label = label;
+          existingBill.totalAmount = amount;
+          existingBill.remarks = item.newValue?.reason || existingBill.remarks;
+        } else {
+          db.sharedBills.push({
+            id: `bill-${customType}`,
+            month: billMonth,
+            type: customType,
+            label,
+            totalAmount: amount,
+            dueDate: new Date().toISOString().split('T')[0],
+            createdAt: new Date().toISOString(),
+            isCustom: true,
+            paidStatus: 'unpaid',
+            remarks: item.newValue?.reason || '',
+          });
+        }
       } else if (item.type === 'meal_off_month') {
         const targetMonth = item.newValue?.month || item.details?.slice(0, 7) || new Date().toISOString().slice(0, 7);
         if (targetMonth) {

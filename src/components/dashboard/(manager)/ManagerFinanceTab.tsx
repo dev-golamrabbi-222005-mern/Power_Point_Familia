@@ -35,7 +35,8 @@ interface MemberFinanceRow {
   role: string;
   fixedTotalShare: number;
   fixedTotalPaid: number;
-  fixedStatus: "paid" | "unpaid" | "partial";
+  isFixedAssigned: boolean;
+  fixedStatus: "paid" | "unpaid" | "partial" | "unassigned";
   mealCashDeposited: number;
   mealsEatenCount: number;
   weeklyDueAmount: number;
@@ -352,12 +353,15 @@ export default function ManagerFinanceTab({
       const rows: MemberFinanceRow[] = users.map((member) => {
         // Fixed costs share & paid
         let assignedTotal: number | undefined = undefined;
+        let isAssigned = false;
         if (member.fixedCosts) {
           if (isMonthMealOff) {
             // During Meal-Off month: Only Rent and Electricity apply! WiFi, Gas, Servant are 0!
             assignedTotal = Number(member.fixedCosts.rent || 0) + Number(member.fixedCosts.electricity || 0);
+            isAssigned = true;
           } else if (typeof member.fixedCosts.customFixedTotal === 'number' && member.fixedCosts.customFixedTotal > 0) {
             assignedTotal = member.fixedCosts.customFixedTotal;
+            isAssigned = true;
           } else {
             const sumIndividual =
               Number(member.fixedCosts.rent || 0) +
@@ -366,13 +370,14 @@ export default function ManagerFinanceTab({
               Number(member.fixedCosts.gas || 0) +
               Number(member.fixedCosts.servant || 0) +
               Number(member.fixedCosts.extraCost || 0);
-            if (sumIndividual > 0) assignedTotal = sumIndividual;
+            if (sumIndividual > 0) {
+              assignedTotal = sumIndividual;
+              isAssigned = true;
+            }
           }
         }
 
-        const fixedShare = assignedTotal !== undefined
-          ? assignedTotal
-          : Math.round(totalFixedMessCost / memberCount);
+        const fixedShare = isAssigned && assignedTotal !== undefined ? assignedTotal : 0;
 
         const isFixedDeposit = (d: any) =>
           d.type === "fixed_cost" ||
@@ -392,8 +397,9 @@ export default function ManagerFinanceTab({
           .reduce((sum, p) => sum + (p.amount || 0), 0);
 
         const fixedPaid = Math.max(depositFixedPaid, billPaymentsPaid);
-        const fixedStatus =
-          fixedPaid >= fixedShare && fixedShare > 0
+        const fixedStatus = !isAssigned
+          ? "unassigned"
+          : fixedPaid >= fixedShare && fixedShare > 0
             ? "paid"
             : fixedPaid > 0
               ? "partial"
@@ -443,7 +449,7 @@ export default function ManagerFinanceTab({
           weeklyDue = Math.max(0, expectedWeeklyCash - memberMealCash);
         }
 
-        const unpaidFixed = Math.max(0, fixedShare - fixedPaid);
+        const unpaidFixed = isAssigned ? Math.max(0, fixedShare - fixedPaid) : 0;
         accumPendingDues += unpaidFixed + weeklyDue;
 
         return {
@@ -453,6 +459,7 @@ export default function ManagerFinanceTab({
           role: member.role,
           fixedTotalShare: fixedShare,
           fixedTotalPaid: fixedPaid,
+          isFixedAssigned: isAssigned,
           fixedStatus,
           mealCashDeposited: memberMealCash,
           mealsEatenCount: memberMeals,
@@ -615,6 +622,8 @@ export default function ManagerFinanceTab({
         currentMonth={currentMonthKey}
         fixedTargets={fixedTargets}
         pendingChangeRequests={pendingChangeRequests}
+        token={token}
+        onRefresh={fetchFinanceData}
         onOpenPayModal={handleOpenPayModal}
       />
 
@@ -671,14 +680,27 @@ export default function ManagerFinanceTab({
 
                   <td className="p-3">
                     <p className="font-bold text-zinc-900 dark:text-white">
-                      ৳{row.fixedTotalPaid} / ৳{row.fixedTotalShare}
+                      ৳{row.fixedTotalPaid} /{" "}
+                      {row.isFixedAssigned ? (
+                        `৳${row.fixedTotalShare}`
+                      ) : (
+                        <span className="text-zinc-400 font-semibold text-xs">Unassigned</span>
+                      )}
                     </p>
                     {row.fixedStatus === "paid" ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                         <CheckCircle2 className="w-3 h-3" /> Paid
                       </span>
-                    ) : (
+                    ) : row.fixedStatus === "partial" ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                        <Clock className="w-3 h-3" /> Partial
+                      </span>
+                    ) : row.fixedStatus === "unassigned" ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
+                        <AlertCircle className="w-3 h-3" /> Unassigned
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-500">
                         <Clock className="w-3 h-3" /> Unpaid
                       </span>
                     )}
@@ -800,12 +822,29 @@ export default function ManagerFinanceTab({
                 <div className="p-2.5 bg-white dark:bg-zinc-900/60 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60">
                   <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Fixed Share</p>
                   <p className="text-xs font-bold text-zinc-900 dark:text-white mt-0.5">
-                    ৳{row.fixedTotalPaid} / ৳{row.fixedTotalShare}
+                    ৳{row.fixedTotalPaid} /{" "}
+                    {row.isFixedAssigned ? (
+                      `৳${row.fixedTotalShare}`
+                    ) : (
+                      <span className="text-zinc-400 font-semibold">Unassigned</span>
+                    )}
                   </p>
                   <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold mt-0.5 ${
-                    row.fixedStatus === 'paid' ? 'text-emerald-500' : 'text-amber-500'
+                    row.fixedStatus === 'paid'
+                      ? 'text-emerald-500'
+                      : row.fixedStatus === 'partial'
+                      ? 'text-amber-500'
+                      : row.fixedStatus === 'unassigned'
+                      ? 'text-zinc-400 dark:text-zinc-500 font-medium'
+                      : 'text-rose-500'
                   }`}>
-                    {row.fixedStatus === 'paid' ? '✓ Paid' : '⏳ Unpaid'}
+                    {row.fixedStatus === 'paid'
+                      ? '✓ Paid'
+                      : row.fixedStatus === 'partial'
+                      ? '⏳ Partial'
+                      : row.fixedStatus === 'unassigned'
+                      ? '○ Unassigned'
+                      : '⏳ Unpaid'}
                   </span>
                 </div>
 

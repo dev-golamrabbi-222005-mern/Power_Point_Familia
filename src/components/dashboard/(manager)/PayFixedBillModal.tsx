@@ -91,25 +91,25 @@ export function PayFixedBillModal({
           {/* Payment Method */}
           <div>
             <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-              Payment Method (পরিশোধের মাধ্যম)
+              Payment Method
             </label>
             <select
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-semibold text-zinc-900 dark:text-white"
             >
-              <option value="bKash">bKash (বিকাশ)</option>
-              <option value="Nagad">Nagad (নগদ)</option>
-              <option value="Rocket">Rocket (রকেট)</option>
-              <option value="Bank Transfer">Bank Transfer (ব্যাংক ট্রান্সফার)</option>
-              <option value="Cash Handover">Cash Handover (নগদ ক্যাশ)</option>
+              <option value="bKash">bKash</option>
+              <option value="Nagad">Nagad</option>
+              <option value="Rocket">Rocket</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Cash Handover">Cash Handover</option>
             </select>
           </div>
 
           {/* TrxID / Reference */}
           <div>
             <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-              Transaction ID / Receipt No. (ঐচ্ছিক)
+              Transaction ID / Receipt No. (Optional)
             </label>
             <input
               type="text"
@@ -123,7 +123,7 @@ export function PayFixedBillModal({
           {/* Remarks */}
           <div>
             <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-              Payment Notes / Remarks (ঐচ্ছিক)
+              Payment Notes / Remarks (Optional)
             </label>
             <textarea
               rows={2}
@@ -138,7 +138,7 @@ export function PayFixedBillModal({
           <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-400 font-medium flex items-start gap-2">
             <ShieldCheck className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
             <span>
-              অনুরোধটি অনুমোদনের জন্য অ্যাডমিনের কাছে পাঠানো হবে। অ্যাডমিন অনুমোদন করলে এটি "Total Fixed Utilities Given" KPI-তে যোগ হয়ে পরিশোধিত হিসেবে রেকর্ড হবে।
+              This disbursement request will be submitted to Admin for approval. Once approved, the bill is marked as paid and added to the &quot;Total Fixed Utilities Given&quot; KPI.
             </span>
           </div>
 

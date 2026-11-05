@@ -23,11 +23,11 @@ export async function GET(req: NextRequest) {
       servant: 4000,
     };
     const defaultBills = [
-      { type: 'rent', label: 'House Rent (বাড়ি ভাড়া)', amount: targets.rent },
-      { type: 'electricity', label: 'Current Bill (বিদ্যুৎ বিল)', amount: targets.electricity },
-      { type: 'wifi', label: 'WiFi Bill (ইন্টারনেট বিল)', amount: targets.wifi },
-      { type: 'gas', label: 'Gas Bill (গ্যাস বিল)', amount: targets.gas },
-      { type: 'servant_fee', label: 'Servant Fee (বুয়া বিল)', amount: targets.servant },
+      { type: 'rent', label: 'House Rent', amount: targets.rent },
+      { type: 'electricity', label: 'Current Bill', amount: targets.electricity },
+      { type: 'wifi', label: 'WiFi Bill', amount: targets.wifi },
+      { type: 'gas', label: 'Gas Bill', amount: targets.gas },
+      { type: 'servant_fee', label: 'Servant Fee', amount: targets.servant },
     ];
 
     let hasAdded = false;
