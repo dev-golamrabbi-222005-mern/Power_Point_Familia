@@ -5,7 +5,6 @@ import { getDb, ensureDbInit, saveDb, connectMongo } from '@/src/lib/db';
 import { User } from '@/src/types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'power_point_familia_super_secure_jwt_secret_key_2026';
-const DEFAULT_ADMIN = (process.env.DEFAULT_ADMIN_EMAIL || 'g.rabbi.dev@gmail.com').toLowerCase().trim();
 
 // Local development safety guard: Never let localhost redirect to production Vercel
 if (process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
@@ -33,10 +32,9 @@ const authOptions: NextAuthOptions = {
       if (!user.email) return false;
 
       try {
-        await ensureDbInit();
+        await ensureDbInit(true);
         const db = getDb();
         const cleanEmail = user.email.toLowerCase().trim();
-        const isAdmin = cleanEmail === DEFAULT_ADMIN || cleanEmail === 'g.rabbi.dev@gmail.com' || cleanEmail === 'g.rabbi2005.555@gmail.com';
         const profileImage = (user.image || (profile as any)?.picture || '') as string;
         const displayName = user.name || cleanEmail.split('@')[0];
 
@@ -58,14 +56,14 @@ const authOptions: NextAuthOptions = {
         }
 
         if (!dbUser) {
-          // No user exists with this email -> Create ONE new user
+          // No user exists with this email -> Create ONE new user with default member role & pending status
           const newUser: User & { passwordHash: string; photoURL?: string } = {
             id: user.id || `user_g_${Date.now()}`,
             email: cleanEmail,
             name: displayName,
             phone: '',
-            role: isAdmin ? 'admin' : 'member',
-            status: isAdmin ? 'approved' : 'pending',
+            role: 'member',
+            status: 'pending',
             createdAt: new Date().toISOString(),
             bazaarCount: 0,
             passwordHash: '',
@@ -81,21 +79,16 @@ const authOptions: NextAuthOptions = {
 
           if (mongo) {
             const usersCol = mongo.collection('users');
-            await usersCol.replaceOne(
+            await usersCol.updateOne(
               { email: cleanEmail },
-              { _id: newUser.id, ...newUser },
+              { $set: newUser, $setOnInsert: { _id: newUser.id } },
               { upsert: true }
             );
           }
           await saveDb(db);
         } else {
-          // User already exists! Prohibit duplicate creation.
+          // User already exists! Preserve role & status from DB.
           let modified = false;
-          if (isAdmin && (dbUser.role !== 'admin' || dbUser.status !== 'approved')) {
-            dbUser.role = 'admin';
-            dbUser.status = 'approved';
-            modified = true;
-          }
           if (profileImage && (dbUser.image !== profileImage || dbUser.photoURL !== profileImage)) {
             dbUser.image = profileImage;
             dbUser.photoURL = profileImage;
@@ -118,7 +111,7 @@ const authOptions: NextAuthOptions = {
             const usersCol = mongo.collection('users');
             await usersCol.updateOne(
               { email: cleanEmail },
-              { $set: { role: dbUser.role, status: dbUser.status, image: dbUser.image, photoURL: dbUser.photoURL, name: dbUser.name } }
+              { $set: { image: dbUser.image, photoURL: dbUser.photoURL, name: dbUser.name } }
             );
           }
           if (modified) {

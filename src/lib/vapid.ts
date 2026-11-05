@@ -9,7 +9,7 @@ export const VAPID_PRIVATE_KEY =
   'jM5dX6El9pGGMexgY01HJ7FIRMeTmukPdzcRPR3Vifk';
 
 export const VAPID_SUBJECT =
-  process.env.VAPID_SUBJECT || 'mailto:g.rabbi.dev@gmail.com';
+  process.env.VAPID_SUBJECT || 'mailto:admin@familia.com';
 
 try {
   if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {

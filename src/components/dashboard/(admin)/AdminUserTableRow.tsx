@@ -47,7 +47,7 @@ export function AdminUserTableRow({
               {usr.name}
               {isSelf && (
                 <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-md uppercase">
-                  Superuser (Me)
+                  You (Active)
                 </span>
               )}
             </p>
@@ -100,7 +100,7 @@ export function AdminUserTableRow({
       <td className="py-3 px-4 text-right">
         {isSelf ? (
           <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-            Superuser
+            Current User
           </span>
         ) : (
           <div className="flex justify-end gap-1.5 text-[11px] font-bold">

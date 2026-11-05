@@ -71,7 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         if (data.user) {
           setUser(data.user);
-          setToken(storedToken);
+          const activeToken = data.token || storedToken;
+          setToken(activeToken);
+          localStorage.setItem('familia_token', activeToken);
           localStorage.setItem('familia_user', JSON.stringify(data.user));
         } else {
           logout();

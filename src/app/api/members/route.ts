@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
     const { error } = authenticate(req, ['manager', 'admin']);
     if (error) return error;
 
-    await ensureDbInit();
+    await ensureDbInit(true);
     const db = getDb();
     
     // Don't expose password hash, but preserve all user data including fixedCosts and pastMonthDue

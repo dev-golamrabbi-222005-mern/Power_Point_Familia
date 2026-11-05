@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest) {
       db.users[userIndex].passwordHash = bcrypt.hashSync(password, salt);
     }
 
-    saveDb(db);
+    await saveDb(db);
 
     return NextResponse.json({
       user: {

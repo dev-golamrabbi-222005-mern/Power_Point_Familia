@@ -22,7 +22,7 @@ export default function AdminManagerViewPage() {
       <div className="flex items-center gap-3 p-4 bg-teal-500/10 border border-teal-500/20 rounded-2xl">
         <Eye className="w-6 h-6 text-teal-400" />
         <div>
-          <h2 className="text-lg font-bold text-zinc-100">Super Admin - Manager View Preview</h2>
+          <h2 className="text-lg font-bold text-zinc-100">Admin - Manager View Preview</h2>
           <p className="text-xs text-zinc-400">Select any manager sub-route to preview manager experience</p>
         </div>
       </div>

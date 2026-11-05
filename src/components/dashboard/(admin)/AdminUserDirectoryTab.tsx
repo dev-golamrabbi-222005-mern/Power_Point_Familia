@@ -83,7 +83,7 @@ export default function AdminUserDirectoryTab({
 
   const handleDeleteUser = async (usr: User) => {
     if (usr.id === currentUser.id) {
-      showWarningAlert("Action Not Allowed", "You cannot delete your own superuser account!");
+      showWarningAlert("Action Not Allowed", "You cannot delete your own active account!");
       return;
     }
 
@@ -119,7 +119,7 @@ export default function AdminUserDirectoryTab({
     newStatus: User["status"],
   ) => {
     if (targetId === currentUser.id) {
-      showWarningAlert("Action Not Allowed", "You cannot modify your own superuser role!");
+      showWarningAlert("Action Not Allowed", "You cannot modify your own active role!");
       return;
     }
     setUpdatingId(targetId);

@@ -4,7 +4,6 @@ import { getDb, ensureDbInit, saveDb, connectMongo } from '@/src/lib/db';
 import { User } from '@/src/types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'power_point_familia_super_secure_jwt_secret_key_2026';
-const DEFAULT_ADMIN = (process.env.DEFAULT_ADMIN_EMAIL || 'g.rabbi.dev@gmail.com').toLowerCase();
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,10 +14,9 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const isAdmin = cleanEmail === DEFAULT_ADMIN || cleanEmail === 'g.rabbi.dev@gmail.com' || cleanEmail === 'g.rabbi2005.555@gmail.com';
     const profilePic = image || photoURL || '';
 
-    await ensureDbInit();
+    await ensureDbInit(true);
     const db = getDb();
 
     // Check MongoDB directly for consistency
@@ -37,14 +35,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (!user) {
-      // Create new user via Google Sign-In
+      // Create new user via Google Sign-In with standard role & pending status
       const newUser: User & { passwordHash: string; photoURL?: string } = {
         id: uid || `user_g_${Date.now()}`,
         email: cleanEmail,
         name: name || cleanEmail.split('@')[0],
         phone: '',
-        role: isAdmin ? 'admin' : 'member',
-        status: isAdmin ? 'approved' : 'pending',
+        role: 'member',
+        status: 'pending',
         createdAt: new Date().toISOString(),
         bazaarCount: 0,
         passwordHash: '',
@@ -58,13 +56,8 @@ export async function POST(req: NextRequest) {
       user = newUser;
       await saveDb(db);
     } else {
-      // Existing user: Upgrade to admin if matching default admin email
+      // Existing user: preserve role and status strictly from the database!
       let modified = false;
-      if (isAdmin && (user.role !== 'admin' || user.status !== 'approved')) {
-        user.role = 'admin';
-        user.status = 'approved';
-        modified = true;
-      }
       if (name && (!user.name || user.name.includes('@') || user.name !== name)) {
         user.name = name;
         modified = true;
@@ -80,7 +73,7 @@ export async function POST(req: NextRequest) {
     }
 
     const tokenUser = {
-      id: user.id,
+      id: user.id || (user._id ? user._id.toString() : ''),
       email: user.email,
       role: user.role,
       name: user.name,
@@ -94,7 +87,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       user: tokenUser,
       token,
-      message: isAdmin ? 'Welcome Super Admin!' : 'Signed in with Google successfully.',
+      message: 'Signed in with Google successfully.',
     });
   } catch (error: any) {
     console.error('Google Auth Route Error:', error);

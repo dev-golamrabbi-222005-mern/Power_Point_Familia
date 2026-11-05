@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { getDb, ensureDbInit } from '@/src/lib/db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'SUPER_SECRET_FAMILIA_JWT_KEY';
+const JWT_SECRET = process.env.JWT_SECRET || 'power_point_familia_super_secure_jwt_secret_key_2026';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,14 +16,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await ensureDbInit();
+    await ensureDbInit(true);
     const db = getDb();
-    const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const cleanEmail = email.toLowerCase().trim();
+    const user = db.users.find(u => u.email && u.email.toLowerCase().trim() === cleanEmail);
 
-    if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
+    if (!user || !user.passwordHash || !bcrypt.compareSync(password, user.passwordHash)) {
       return NextResponse.json(
         { message: 'Invalid email or password.' },
         { status: 401 }
+      );
+    }
+
+    if (user.status === 'rejected') {
+      return NextResponse.json(
+        { message: 'Your account is deactivated or rejected. Please contact an admin.' },
+        { status: 403 }
       );
     }
 

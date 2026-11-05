@@ -90,7 +90,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialTab = 'lo
           </button>
 
           <p className="text-[11px] text-zinc-500">
-            Super Administrator account: <span className="text-emerald-400 font-mono">g.rabbi.dev@gmail.com</span>
+            Sign in with your verified email account.
           </p>
         </div>
       </div>

@@ -22,7 +22,7 @@ export default function AdminMemberViewPage() {
       <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
         <Eye className="w-6 h-6 text-emerald-400" />
         <div>
-          <h2 className="text-lg font-bold text-zinc-100">Super Admin - Member View Preview</h2>
+          <h2 className="text-lg font-bold text-zinc-100">Admin - Member View Preview</h2>
           <p className="text-xs text-zinc-400">Select any member sub-route to preview member experience</p>
         </div>
       </div>

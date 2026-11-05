@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import { User, MealMenu, MealRecord, Deposit, SystemSettings, BazaarAssignment, BazaarExpense, BazaarPair, WeeklyPayment, ContactMessage, SharedBill, MemberBillPayment, RefundRequest, MonthlySummary, MealToggleLog, AdminChangeRequest, EmergencyMealRequest, DailyMealDay } from '../../src/types';
 
 export interface DatabaseSchema {
@@ -63,32 +63,8 @@ export async function connectMongo() {
 }
 
 export function getInitialDb(): DatabaseSchema {
-  const initialUser: User & { passwordHash: string } = {
-    id: 'user_admin_001',
-    email: 'admin@familia.com',
-    name: 'System Admin',
-    phone: '+8801700000000',
-    role: 'admin',
-    status: 'approved',
-    createdAt: new Date().toISOString(),
-    passwordHash: bcrypt.hashSync('admin123', 10),
-    bazaarCount: 0,
-  };
-
-  const rabbiAdmin: User & { passwordHash: string } = {
-    id: 'user_admin_rabbi',
-    email: 'g.rabbi.dev@gmail.com',
-    name: 'Golam Rabbi (Admin)',
-    phone: '+8801700000000',
-    role: 'admin',
-    status: 'approved',
-    createdAt: new Date().toISOString(),
-    passwordHash: bcrypt.hashSync('admin123', 10),
-    bazaarCount: 0,
-  };
-
   return {
-    users: [initialUser, rabbiAdmin],
+    users: [],
     menus: [],
     records: [],
     deposits: [],
@@ -281,7 +257,9 @@ export async function saveDb(data: DatabaseSchema): Promise<void> {
   isDbInitialized = true;
 
   try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    // Keep codebase db.json free of user data to avoid static cache conflicts
+    const { users, ...restData } = data;
+    fs.writeFileSync(DB_FILE, JSON.stringify({ ...restData, users: [] }, null, 2), 'utf-8');
   } catch (err) {
     console.error('Failed writing to DB file:', err);
   }
@@ -289,18 +267,27 @@ export async function saveDb(data: DatabaseSchema): Promise<void> {
   const db = await connectMongo();
   if (db) {
     try {
-      // 1. Sync Users with email unique upsert (NEVER wipes users collection)
+      // 1. Sync Users using $set so immutable _id is never mutated
       const usersCol = db.collection('users');
       await usersCol.createIndex({ email: 1 }, { unique: true }).catch(() => {});
       for (const user of data.users) {
         const cleanEmail = user.email.toLowerCase().trim();
         const docId = user.id || (user as any)._id || `user_g_${Date.now()}`;
-        const { _id, ...rest } = user as any;
-        await usersCol.replaceOne(
+        const { _id, id, email, ...updateFields } = user as any;
+        await usersCol.updateOne(
           { email: cleanEmail },
-          { _id: docId, id: docId, email: cleanEmail, ...rest },
+          {
+            $set: { ...updateFields, email: cleanEmail, id: docId },
+            $setOnInsert: { _id: docId },
+          },
           { upsert: true }
         );
+      }
+
+      // Sync deletions for users if data.users is populated
+      const activeEmails = data.users.map((u: any) => u.email && u.email.toLowerCase().trim()).filter(Boolean);
+      if (activeEmails.length > 0) {
+        await usersCol.deleteMany({ email: { $nin: activeEmails } });
       }
 
       // 2. Safe sync helper for other collections
@@ -354,4 +341,75 @@ export async function saveDb(data: DatabaseSchema): Promise<void> {
       console.error('Failed syncing to MongoDB:', err);
     }
   }
+}
+
+export async function updateUserInDb(id: string, updates: Partial<User & { passwordHash?: string }>): Promise<boolean> {
+  const cleanEmail = updates.email ? updates.email.toLowerCase().trim() : undefined;
+
+  // 1. Update in-memory db
+  if (memoryDb && memoryDb.users) {
+    const idx = memoryDb.users.findIndex(
+      (u: any) => u.id === id || u._id === id || (cleanEmail && u.email && u.email.toLowerCase().trim() === cleanEmail)
+    );
+    if (idx !== -1) {
+      Object.assign(memoryDb.users[idx], updates);
+    }
+  }
+
+  // 2. Direct atomic update in MongoDB
+  const db = await connectMongo();
+  if (db) {
+    try {
+      const usersCol = db.collection('users');
+      const orConditions: any[] = [{ id: id }, { _id: id }];
+      if (ObjectId.isValid(id)) {
+        orConditions.push({ _id: new ObjectId(id) });
+      }
+      if (cleanEmail) {
+        orConditions.push({ email: cleanEmail });
+      }
+      const { _id, id: discardedId, ...fieldsToSet } = updates as any;
+      await usersCol.updateOne(
+        { $or: orConditions },
+        { $set: fieldsToSet }
+      );
+      return true;
+    } catch (e) {
+      console.error('Error updating user in MongoDB:', e);
+      return false;
+    }
+  }
+  return true;
+}
+
+export async function deleteUserFromDb(id: string, email?: string): Promise<boolean> {
+  const cleanEmail = email ? email.toLowerCase().trim() : undefined;
+
+  // 1. Remove from in-memory db
+  if (memoryDb && memoryDb.users) {
+    memoryDb.users = memoryDb.users.filter(
+      (u: any) => u.id !== id && u._id !== id && (!cleanEmail || u.email?.toLowerCase().trim() !== cleanEmail)
+    );
+  }
+
+  // 2. Direct atomic deletion from MongoDB
+  const db = await connectMongo();
+  if (db) {
+    try {
+      const usersCol = db.collection('users');
+      const orConditions: any[] = [{ id: id }, { _id: id }];
+      if (ObjectId.isValid(id)) {
+        orConditions.push({ _id: new ObjectId(id) });
+      }
+      if (cleanEmail) {
+        orConditions.push({ email: cleanEmail });
+      }
+      await usersCol.deleteOne({ $or: orConditions });
+      return true;
+    } catch (e) {
+      console.error('Error deleting user from MongoDB:', e);
+      return false;
+    }
+  }
+  return true;
 }

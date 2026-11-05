@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { getDb, saveDb, ensureDbInit, connectMongo } from '@/src/lib/db';
 import { UserRole } from '@/src/types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'SUPER_SECRET_FAMILIA_JWT_KEY';
+const JWT_SECRET = process.env.JWT_SECRET || 'power_point_familia_super_secure_jwt_secret_key_2026';
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,13 +42,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const isAdminEmail = 
-      cleanEmail === 'g.rabbi2005.555@gmail.com' || 
-      cleanEmail === 'admin@familia.com' ||
-      cleanEmail === 'g.rabbi.dev@gmail.com';
-    
-    const role: UserRole = isAdminEmail ? 'admin' : 'member';
-    const status: 'pending' | 'approved' | 'rejected' = isAdminEmail ? 'approved' : 'pending';
+    const role: UserRole = 'member';
+    const status: 'pending' | 'approved' | 'rejected' = 'pending';
 
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password, salt);
@@ -81,7 +76,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       user: tokenUser,
       token,
-      message: isAdminEmail ? 'Admin account registered and pre-approved!' : 'Account registered successfully! Waiting for Admin approval.'
+      message: 'Account registered successfully! Waiting for Admin approval.'
     }, { status: 201 });
   } catch (error) {
     console.error('Registration error', error);

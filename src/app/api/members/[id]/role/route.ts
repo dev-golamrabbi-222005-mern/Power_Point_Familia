@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/src/lib/auth';
-import { getDb, saveDb, ensureDbInit } from '@/src/lib/db';
+import { getDb, saveDb, ensureDbInit, updateUserInDb, deleteUserFromDb } from '@/src/lib/db';
 
 // PUT: Full A-Z User Profile & Status Edit (Admin Only)
 export async function PUT(
@@ -15,9 +15,9 @@ export async function PUT(
     const body = await req.json();
     const { name, email, phone, role, status } = body;
 
-    await ensureDbInit();
+    await ensureDbInit(true);
     const db = getDb();
-    const userIndex = db.users.findIndex(u => u.id === id);
+    const userIndex = db.users.findIndex(u => u.id === id || (u as any)._id === id);
 
     if (userIndex === -1) {
       return NextResponse.json({ message: 'User not found.' }, { status: 404 });
@@ -25,19 +25,24 @@ export async function PUT(
 
     if (db.users[userIndex].id === user!.id && (role !== undefined && role !== 'admin')) {
       return NextResponse.json(
-        { message: 'You cannot demote yourself from Superuser/Admin role!' },
+        { message: 'You cannot demote yourself from Admin role!' },
         { status: 400 }
       );
     }
 
-    // A-Z Profile Editing
-    if (name) db.users[userIndex].name = name;
-    if (email) db.users[userIndex].email = email;
-    if (phone !== undefined) db.users[userIndex].phone = phone;
-    if (role) db.users[userIndex].role = role;
-    if (status) db.users[userIndex].status = status;
+    const updates: any = {};
+    if (name) updates.name = name;
+    if (email) updates.email = email.toLowerCase().trim();
+    if (phone !== undefined) updates.phone = phone;
+    if (role) updates.role = role;
+    if (status) updates.status = status;
 
-    saveDb(db);
+    // Direct atomic update to MongoDB and in-memory cache
+    await updateUserInDb(id, updates);
+
+    // Also update current db.users in place and save
+    Object.assign(db.users[userIndex], updates);
+    await saveDb(db);
 
     return NextResponse.json({
       user: db.users[userIndex],
@@ -60,21 +65,26 @@ export async function DELETE(
 
     const { id } = await params;
 
-    await ensureDbInit();
+    await ensureDbInit(true);
     const db = getDb();
 
     if (id === user!.id) {
       return NextResponse.json({ message: 'You cannot delete your own account!' }, { status: 400 });
     }
 
-    const userIndex = db.users.findIndex(u => u.id === id);
+    const userIndex = db.users.findIndex(u => u.id === id || (u as any)._id === id);
     if (userIndex === -1) {
       return NextResponse.json({ message: 'User not found.' }, { status: 404 });
     }
 
-    // Delete user from db.users
+    const targetUser = db.users[userIndex];
+
+    // Atomically delete from MongoDB and in-memory cache
+    await deleteUserFromDb(id, targetUser.email);
+
+    // Delete user from db.users array and persist
     db.users.splice(userIndex, 1);
-    saveDb(db);
+    await saveDb(db);
 
     return NextResponse.json({ message: 'User account deleted permanently.' });
   } catch (error) {

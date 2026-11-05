@@ -52,12 +52,12 @@ export default function AdminDashboard({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-purple-400 bg-purple-500/15 px-2.5 py-0.5 rounded-full border border-purple-500/20">
-                Superuser Console
+                Admin Console
               </span>
               <span className="text-xs text-zinc-400 font-bold">• System Administrator</span>
             </div>
             <h2 className="section-title text-zinc-100 mt-0.5">
-              Power Point Familia Super Admin Panel Overview
+              Power Point Familia Admin Panel Overview
             </h2>
           </div>
         </div>
