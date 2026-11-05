@@ -109,33 +109,6 @@ export default function DashboardTopBar() {
               </span>
             )}
 
-            {user.role === 'manager' && (
-              <button
-                onClick={toggleRoleView}
-                title="Click to toggle between Manager tools and Member view"
-                className={`px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider border transition-all flex items-center gap-1 cursor-pointer ${
-                  activeRoleView === 'manager'
-                    ? 'bg-teal-500/15 text-teal-400 border-teal-500/30 hover:bg-teal-500/25'
-                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
-                }`}
-              >
-                {activeRoleView === 'manager' ? (
-                  <>
-                    <ChefHat className="w-3 h-3" />
-                    <span className="hidden sm:inline">Manager Mode</span>
-                    <span className="sm:hidden">Manager</span>
-                  </>
-                ) : (
-                  <>
-                    <UserCheck className="w-3 h-3" />
-                    <span className="hidden sm:inline">Member Mode</span>
-                    <span className="sm:hidden">Member</span>
-                  </>
-                )}
-                <span className="text-[8px] sm:text-[9px] opacity-60 ml-0.5 underline">Switch</span>
-              </button>
-            )}
-
             {user.role === 'member' && (
               <span className="hidden sm:inline-flex px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 items-center gap-1">
                 <UserCheck className="w-3 h-3" />

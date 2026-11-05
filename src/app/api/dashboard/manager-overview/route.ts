@@ -95,27 +95,17 @@ export async function GET(req: NextRequest) {
     const eligibleMembers = db.users.filter(u => u.status === 'approved' && ['member', 'manager', 'admin'].includes(u.role));
     const memberCount = Math.max(activeMembers.length, 1);
 
-    // Mess total meal today
+    // Mess total meal today: strictly count only locked/confirmed sessions
     const todayDaily = db.dailyMeals.find(d => d.date === todayStr);
     let todayLunchMeals = 0;
     let todayDinnerMeals = 0;
 
     if (todayDaily?.lunch?.isLocked) {
-      todayLunchMeals = todayDaily.lunch.totalCount;
-    } else {
-      todayLunchMeals = eligibleMembers.filter(m => {
-        const off = db.records.find(r => r.userId === m.id && r.date === todayStr && r.mealType === 'lunch' && (r.count === 0 || r.requestStatus === 'accepted'));
-        return !off;
-      }).length;
+      todayLunchMeals = todayDaily.lunch.totalCount || 0;
     }
 
     if (todayDaily?.dinner?.isLocked) {
-      todayDinnerMeals = todayDaily.dinner.totalCount;
-    } else {
-      todayDinnerMeals = eligibleMembers.filter(m => {
-        const off = db.records.find(r => r.userId === m.id && r.date === todayStr && r.mealType === 'dinner' && (r.count === 0 || r.requestStatus === 'accepted'));
-        return !off;
-      }).length;
+      todayDinnerMeals = todayDaily.dinner.totalCount || 0;
     }
 
     const messTotalMealsToday = todayLunchMeals + todayDinnerMeals;
