@@ -1,24 +1,89 @@
 {
+  "id": "/?source=pwa",
   "name": "Power Point Familia - Meal Management System",
   "short_name": "Familia",
-  "description": "Full-stack Meal Management System with robust RBAC, menu planning, deposit tracking, and bazaar management.",
+  "description": "Full-stack Meal Management System with robust role-based access control (RBAC), menu planning, deposit tracking, and cost calculation.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
   "orientation": "portrait-primary",
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "categories": [
+    "food",
+    "lifestyle",
+    "productivity",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Power Point Familia Desktop Dashboard"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Power Point Familia Mobile App"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Kitchen & Meals",
+      "short_name": "Meals",
+      "description": "Check meal count and toggle meal",
+      "url": "/dashboard/meals",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Finances & Dues",
+      "short_name": "Finance",
+      "description": "View monthly balance and deposits",
+      "url": "/dashboard/finance",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

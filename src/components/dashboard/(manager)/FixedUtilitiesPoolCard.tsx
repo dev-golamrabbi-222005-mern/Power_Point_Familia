@@ -338,7 +338,7 @@ export function FixedUtilitiesPoolCard({
         </div>
 
         {/* Global Mini Stats & Propose Extra Cost Button */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center justify-center gap-3  flex-wrap">
           <div className="px-3 py-1.5 bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl text-left">
             <p className="text-[10px] text-zinc-400 font-bold uppercase">
               Total Budget
