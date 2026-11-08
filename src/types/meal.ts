@@ -17,6 +17,7 @@ export interface MealRecord {
   requestedAt?: string;
   resolvedBy?: string;
   resolvedAt?: string;
+  updatedAt?: string;
 }
 
 export interface MealCostData {

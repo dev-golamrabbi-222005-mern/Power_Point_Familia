@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     if (!db.dailyMeals) db.dailyMeals = [];
 
     const userId = user!.id;
+    const cleanEmail = user?.email?.toLowerCase().trim();
 
     // Get unique dates with activities (bazaar, meals, or daily locked sessions)
     const activityDates = new Set<string>();
@@ -76,11 +77,11 @@ export async function GET(req: NextRequest) {
         lunchCount = dayMeal.lunch.totalCount || 0;
         lunchMenu = dayMeal.lunch.menu || '';
         isLunchLocked = true;
-        myLunch = Boolean(dayMeal.lunch.activeMembers?.some(m => m.userId === userId));
+        myLunch = Boolean(dayMeal.lunch.activeMembers?.some(m => m.userId === userId || (cleanEmail && (m as any).userEmail === cleanEmail)));
       } else {
         const lunchRecs = mealRecords.filter(r => r.mealType === 'lunch');
         lunchCount = lunchRecs.reduce((sum, r) => sum + r.count, 0);
-        const myRec = lunchRecs.find(r => r.userId === userId);
+        const myRec = lunchRecs.find(r => r.userId === userId || (cleanEmail && r.userId === cleanEmail));
         myLunch = myRec ? myRec.count > 0 : false;
       }
 
@@ -89,11 +90,11 @@ export async function GET(req: NextRequest) {
         dinnerCount = dayMeal.dinner.totalCount || 0;
         dinnerMenu = dayMeal.dinner.menu || '';
         isDinnerLocked = true;
-        myDinner = Boolean(dayMeal.dinner.activeMembers?.some(m => m.userId === userId));
+        myDinner = Boolean(dayMeal.dinner.activeMembers?.some(m => m.userId === userId || (cleanEmail && (m as any).userEmail === cleanEmail)));
       } else {
         const dinnerRecs = mealRecords.filter(r => r.mealType === 'dinner');
         dinnerCount = dinnerRecs.reduce((sum, r) => sum + r.count, 0);
-        const myRec = dinnerRecs.find(r => r.userId === userId);
+        const myRec = dinnerRecs.find(r => r.userId === userId || (cleanEmail && r.userId === cleanEmail));
         myDinner = myRec ? myRec.count > 0 : false;
       }
 

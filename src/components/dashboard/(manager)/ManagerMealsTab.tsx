@@ -138,13 +138,56 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
     }
   };
 
+  const fetchPendingMealRequests = async () => {
+    try {
+      const reqRes = await fetch('/api/records/request-meal-off', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (reqRes.ok) {
+        const data = await reqRes.json();
+        setMealRequests(data);
+      }
+    } catch (e) {
+      // quiet poll
+    }
+  };
+
   useEffect(() => {
     fetchMealsData();
+
+    // Auto-poll for incoming meal-off requests every 4 seconds
+    const interval = setInterval(() => {
+      fetchPendingMealRequests();
+    }, 4000);
+
+    const handleCustomChange = () => {
+      fetchPendingMealRequests();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('meal-requests-changed', handleCustomChange);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('meal-requests-changed', handleCustomChange);
+      }
+    };
   }, [token]);
 
   const handleMealRequestAction = async (recordId: string, action: 'accept' | 'reject') => {
     try {
       setRequestActionLoading(recordId);
+
+      // Instant optimistic UI update
+      setMealRequests(prev =>
+        prev.map(r =>
+          r.id === recordId
+            ? { ...r, requestStatus: action === 'accept' ? 'accepted' : 'rejected' }
+            : r
+        )
+      );
+
       const res = await fetch('/api/records/request-meal-off', {
         method: 'PUT',
         headers: {
@@ -159,10 +202,16 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
         throw new Error(err.message || 'Action failed');
       }
 
+      // Notify other tabs/components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('meal-requests-changed'));
+      }
+
       await fetchMealsData();
       onRefreshMenus();
     } catch (err: any) {
       showErrorAlert('Action Failed', err.message || 'Action failed');
+      await fetchPendingMealRequests();
     } finally {
       setRequestActionLoading(null);
     }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/src/lib/auth';
-import { getDb, ensureDbInit, saveDb } from '@/src/lib/db';
+import { getDb, ensureDbInit, saveDb, connectMongo } from '@/src/lib/db';
 import { getDhakaTime } from '@/src/lib/utils';
 
 export async function POST(req: NextRequest) {
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = user!.id;
+    const cleanEmail = user?.email?.toLowerCase().trim();
     const { today, currentHour } = getDhakaTime();
     const requestDate = new Date(date + 'T00:00:00');
     const todayDate = new Date(today + 'T00:00:00');
@@ -85,19 +86,26 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Find existing record for this user, date, mealType
+    // Find existing record for this user, date, mealType (matching userId or clean email)
     const existingRecordIndex = db.records.findIndex(
-      r => r.userId === userId && r.date === date && r.mealType === mealType
+      r => (r.userId === userId || (cleanEmail && r.userId === cleanEmail)) &&
+           r.date === date &&
+           r.mealType === mealType
     );
 
     const newCount = action === 'on' ? 1 : 0;
-    let record;
+    let record: any;
 
     if (existingRecordIndex >= 0) {
       // Update existing
       record = db.records[existingRecordIndex];
       const oldCount = record.count;
       record.count = newCount;
+      record.updatedAt = new Date().toISOString();
+      // If toggled directly before cutoff, clear any old requestStatus
+      if (!isToday || (mealType === 'lunch' && currentHour < 9) || (mealType === 'dinner' && currentHour < 15)) {
+        record.requestStatus = 'none';
+      }
       
       // Log the toggle action
       if (!db.mealToggleLog) db.mealToggleLog = [];
@@ -114,11 +122,13 @@ export async function POST(req: NextRequest) {
     } else {
       // Create new
       record = {
-        id: `rec-${Date.now()}-${Math.random()}`,
+        id: `rec-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         userId,
         date,
         mealType,
         count: newCount,
+        requestStatus: 'none',
+        updatedAt: new Date().toISOString(),
       };
       db.records.push(record);
       
@@ -130,26 +140,43 @@ export async function POST(req: NextRequest) {
         date,
         mealType,
         action,
-        oldCount: 0,
+        oldCount: 1,
         newCount,
         timestamp: new Date().toISOString(),
       });
     }
 
-    saveDb(db);
+    // Await full persistence in memory and disk/Atlas
+    await saveDb(db);
 
-    // Notify manager if meal is turned off
-    if (action === 'off') {
-      const userInfo = db.users.find(u => u.id === userId);
-      const managers = db.users.filter(u => u.role === 'manager' && u.status === 'approved');
-      
-      // TODO: Send notification to manager
-      // For now, just log that a meal was turned off
-      console.log(`Meal off notification: ${userInfo?.name} turned off ${mealType} on ${date}`);
+    // Atomic direct update in MongoDB records collection for instant multi-instance consistency
+    const dbMongo = await connectMongo();
+    if (dbMongo) {
+      try {
+        const recordsCol = dbMongo.collection('records');
+        await recordsCol.updateOne(
+          { id: record.id },
+          {
+            $set: {
+              _id: record.id,
+              id: record.id,
+              userId: record.userId,
+              date: record.date,
+              mealType: record.mealType,
+              count: record.count,
+              requestStatus: record.requestStatus || 'none',
+              updatedAt: record.updatedAt || new Date().toISOString(),
+            }
+          },
+          { upsert: true }
+        );
+      } catch (e) {
+        console.error('Direct MongoDB write error in toggle-meal:', e);
+      }
     }
 
     return NextResponse.json({
-      message: `Meal turned ${action}.`,
+      message: `Meal successfully turned ${action}.`,
       record,
       daysAhead,
     });
@@ -183,17 +210,30 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = user!.id;
-    const lunchRecord = db.records.find(r => r.userId === userId && r.date === date && r.mealType === 'lunch');
-    const dinnerRecord = db.records.find(r => r.userId === userId && r.date === date && r.mealType === 'dinner');
+    const cleanEmail = user?.email?.toLowerCase().trim();
+
+    const lunchRecord = db.records.find(
+      r => (r.userId === userId || (cleanEmail && r.userId === cleanEmail)) &&
+           r.date === date &&
+           r.mealType === 'lunch'
+    );
+    const dinnerRecord = db.records.find(
+      r => (r.userId === userId || (cleanEmail && r.userId === cleanEmail)) &&
+           r.date === date &&
+           r.mealType === 'dinner'
+    );
     const dayMeal = db.dailyMeals?.find(d => d.date === date);
 
     const { today, currentHour } = getDhakaTime();
     const isToday = (date === today);
 
+    // Default to autoBookMeals (or true) if no record exists yet
+    const autoBookDefault = db.settings.autoBookMeals !== undefined ? db.settings.autoBookMeals : true;
+
     const formattedLunch = {
       mealType: 'lunch' as const,
-      isOn: lunchRecord ? lunchRecord.count > 0 : true,
-      count: lunchRecord ? lunchRecord.count : 1,
+      isOn: lunchRecord ? lunchRecord.count > 0 : autoBookDefault,
+      count: lunchRecord ? lunchRecord.count : (autoBookDefault ? 1 : 0),
       requestStatus: lunchRecord?.requestStatus || 'none',
       requestReason: lunchRecord?.requestReason,
       requestedAt: lunchRecord?.requestedAt,
@@ -205,8 +245,8 @@ export async function GET(req: NextRequest) {
 
     const formattedDinner = {
       mealType: 'dinner' as const,
-      isOn: dinnerRecord ? dinnerRecord.count > 0 : true,
-      count: dinnerRecord ? dinnerRecord.count : 1,
+      isOn: dinnerRecord ? dinnerRecord.count > 0 : autoBookDefault,
+      count: dinnerRecord ? dinnerRecord.count : (autoBookDefault ? 1 : 0),
       requestStatus: dinnerRecord?.requestStatus || 'none',
       requestReason: dinnerRecord?.requestReason,
       requestedAt: dinnerRecord?.requestedAt,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { authenticate } from '@/src/lib/auth';
-import { getDb, saveDb, ensureDbInit } from '@/src/lib/db';
+import { getDb, saveDb, ensureDbInit, updateUserInDb } from '@/src/lib/db';
 
 export async function PUT(req: NextRequest) {
   try {
@@ -10,22 +10,41 @@ export async function PUT(req: NextRequest) {
 
     const { name, phone, password } = await req.json();
 
-    await ensureDbInit();
+    // Force refresh from database so newly approved members or role changes are immediately available
+    await ensureDbInit(true);
     const db = getDb();
-    const userIndex = db.users.findIndex(u => u.id === user!.id);
+    
+    const cleanEmail = user?.email ? user.email.toLowerCase().trim() : '';
+    const userId = user?.id;
+
+    const userIndex = db.users.findIndex(u => 
+      (userId && (u.id === userId || (u as any)._id === userId)) ||
+      (cleanEmail && u.email && u.email.toLowerCase().trim() === cleanEmail)
+    );
 
     if (userIndex === -1) {
-      return NextResponse.json({ message: 'User not found.' }, { status: 404 });
+      return NextResponse.json({ message: 'User not found in system.' }, { status: 404 });
     }
 
-    if (name) db.users[userIndex].name = name;
-    if (phone) db.users[userIndex].phone = phone;
+    const updates: any = {};
+    if (name) {
+      db.users[userIndex].name = name;
+      updates.name = name;
+    }
+    if (phone) {
+      db.users[userIndex].phone = phone;
+      updates.phone = phone;
+    }
     
     if (password) {
       const salt = bcrypt.genSaltSync(10);
-      db.users[userIndex].passwordHash = bcrypt.hashSync(password, salt);
+      const hash = bcrypt.hashSync(password, salt);
+      db.users[userIndex].passwordHash = hash;
+      updates.passwordHash = hash;
     }
 
+    const targetUserId = db.users[userIndex].id || (db.users[userIndex] as any)._id || userId;
+    await updateUserInDb(targetUserId, { ...updates, email: db.users[userIndex].email });
     await saveDb(db);
 
     return NextResponse.json({

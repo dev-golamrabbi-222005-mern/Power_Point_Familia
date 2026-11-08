@@ -26,14 +26,28 @@ export function authenticate(req: NextRequest, allowedRoles?: UserRole[]) {
 
     // Cross-verify with live database state
     const db = getDb();
+    const cleanDecodedEmail = decoded.email ? decoded.email.toLowerCase().trim() : '';
     const liveUser = db?.users?.find(
       u => (u.id && decoded.id && u.id === decoded.id) ||
-           (u.email && decoded.email && u.email.toLowerCase().trim() === decoded.email.toLowerCase().trim())
+           ((u as any)._id && decoded.id && (u as any)._id === decoded.id) ||
+           (u.email && cleanDecodedEmail && u.email.toLowerCase().trim() === cleanDecodedEmail)
     );
 
-    // Prioritize current database role and status over static token claims
+    // Prioritize current database role, status, and ID over static token claims
     const currentRole = liveUser ? liveUser.role : decoded.role;
     const currentStatus = liveUser ? liveUser.status : decoded.status;
+    const canonicalId = liveUser ? (liveUser.id || (liveUser as any)._id || decoded.id) : decoded.id;
+    const canonicalEmail = liveUser ? liveUser.email : decoded.email;
+    const canonicalName = liveUser ? liveUser.name : decoded.name;
+
+    const authPayload: AuthUser = {
+      ...decoded,
+      id: canonicalId,
+      email: canonicalEmail,
+      name: canonicalName,
+      role: currentRole,
+      status: currentStatus,
+    };
 
     if (liveUser && liveUser.status === 'rejected') {
       return {
@@ -45,11 +59,11 @@ export function authenticate(req: NextRequest, allowedRoles?: UserRole[]) {
     if (allowedRoles && !allowedRoles.includes(currentRole)) {
       return {
         error: NextResponse.json({ message: `Access denied. Requires one of roles: ${allowedRoles.join(', ')}` }, { status: 403 }),
-        user: { ...decoded, role: currentRole, status: currentStatus }
+        user: authPayload
       };
     }
 
-    return { error: null, user: { ...decoded, role: currentRole, status: currentStatus } };
+    return { error: null, user: authPayload };
   } catch (err) {
     return { error: NextResponse.json({ message: 'Token is invalid or expired' }, { status: 403 }), user: null };
   }

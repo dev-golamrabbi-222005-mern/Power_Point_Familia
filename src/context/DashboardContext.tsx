@@ -188,7 +188,28 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (token) {
       refreshAll();
     }
-  }, [token, refreshAll]);
+
+    // Smart background poll for meal-off requests every 6 seconds for managers/admins
+    const pollInterval = setInterval(() => {
+      if (token && user && (user.role === 'manager' || user.role === 'admin')) {
+        refreshMealRequests();
+      }
+    }, 6000);
+
+    const handleCustomMealReqChange = () => {
+      refreshMealRequests();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('meal-requests-changed', handleCustomMealReqChange);
+    }
+
+    return () => {
+      clearInterval(pollInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('meal-requests-changed', handleCustomMealReqChange);
+      }
+    };
+  }, [token, user, refreshAll, refreshMealRequests]);
 
   const pendingUsersCount = allUsers.filter(u => u.status === 'pending').length;
 

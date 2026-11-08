@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/src/lib/auth';
-import { getDb, saveDb, ensureDbInit } from '@/src/lib/db';
+import { getDb, saveDb, ensureDbInit, connectMongo } from '@/src/lib/db';
 import { MealRecord } from '@/src/types';
 
 // POST: Member submits a late meal-off request after cut-off time
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
     await ensureDbInit();
     const db = getDb();
     const userId = user!.id;
+    const cleanEmail = user?.email?.toLowerCase().trim();
 
     // Check if kitchen headcount is already locked
     const existingDayMeal = db.dailyMeals?.find(d => d.date === date);
@@ -43,28 +44,61 @@ export async function POST(req: NextRequest) {
     }
 
     let record = db.records.find(
-      r => r.userId === userId && r.date === date && r.mealType === mealType
+      r => (r.userId === userId || (cleanEmail && r.userId === cleanEmail)) &&
+           r.date === date &&
+           r.mealType === mealType
     );
+
+    const nowIso = new Date().toISOString();
 
     if (record) {
       record.requestStatus = 'pending';
       record.requestReason = reason.trim();
-      record.requestedAt = new Date().toISOString();
+      record.requestedAt = nowIso;
+      record.updatedAt = nowIso;
     } else {
       record = {
-        id: `rec-${Date.now()}-${Math.random()}`,
+        id: `rec-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         userId,
         date,
         mealType,
         count: 1, // Currently on, requesting off
         requestStatus: 'pending',
         requestReason: reason.trim(),
-        requestedAt: new Date().toISOString(),
+        requestedAt: nowIso,
+        updatedAt: nowIso,
       };
       db.records.push(record);
     }
 
-    saveDb(db);
+    await saveDb(db);
+
+    // Direct atomic write to MongoDB collection records
+    const dbMongo = await connectMongo();
+    if (dbMongo) {
+      try {
+        await dbMongo.collection('records').updateOne(
+          { id: record.id },
+          {
+            $set: {
+              _id: record.id,
+              id: record.id,
+              userId: record.userId,
+              date: record.date,
+              mealType: record.mealType,
+              count: record.count,
+              requestStatus: record.requestStatus,
+              requestReason: record.requestReason,
+              requestedAt: record.requestedAt,
+              updatedAt: nowIso,
+            }
+          },
+          { upsert: true }
+        );
+      } catch (e) {
+        console.error('Direct MongoDB write error in request-meal-off POST:', e);
+      }
+    }
 
     return NextResponse.json({
       message: 'Late meal-off request submitted to manager for review.',
@@ -90,11 +124,14 @@ export async function GET(req: NextRequest) {
     );
 
     if (user!.role === 'member') {
-      recordsWithRequests = recordsWithRequests.filter(r => r.userId === user!.id);
+      const cleanEmail = user?.email?.toLowerCase().trim();
+      recordsWithRequests = recordsWithRequests.filter(
+        r => r.userId === user!.id || (cleanEmail && r.userId === cleanEmail)
+      );
     }
 
     const enriched = recordsWithRequests.map(r => {
-      const u = db.users.find(usr => usr.id === r.userId);
+      const u = db.users.find(usr => usr.id === r.userId || (usr.email && usr.email.toLowerCase().trim() === r.userId));
       return {
         id: r.id,
         userId: r.userId,
@@ -149,6 +186,7 @@ export async function PUT(req: NextRequest) {
       record.requestStatus = 'accepted';
       record.resolvedBy = user!.id;
       record.resolvedAt = nowIso;
+      record.updatedAt = nowIso;
 
       if (!db.mealToggleLog) db.mealToggleLog = [];
       db.mealToggleLog.push({
@@ -166,9 +204,31 @@ export async function PUT(req: NextRequest) {
       record.requestStatus = 'rejected';
       record.resolvedBy = user!.id;
       record.resolvedAt = nowIso;
+      record.updatedAt = nowIso;
     }
 
-    saveDb(db);
+    await saveDb(db);
+
+    // Direct atomic update in MongoDB collection records
+    const dbMongo = await connectMongo();
+    if (dbMongo) {
+      try {
+        await dbMongo.collection('records').updateOne(
+          { id: record.id },
+          {
+            $set: {
+              count: record.count,
+              requestStatus: record.requestStatus,
+              resolvedBy: record.resolvedBy,
+              resolvedAt: record.resolvedAt,
+              updatedAt: nowIso,
+            }
+          }
+        );
+      } catch (e) {
+        console.error('Direct MongoDB write error in request-meal-off PUT:', e);
+      }
+    }
 
     return NextResponse.json({
       message: `Meal off request ${action === 'accept' ? 'accepted' : 'rejected'}.`,
