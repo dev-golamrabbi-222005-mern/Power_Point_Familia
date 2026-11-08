@@ -37,6 +37,7 @@ export default function DashboardSidebar() {
     setActiveRoleView,
     pendingDepositsCount,
     pendingUsersCount,
+    totalPendingTicketsCount,
   } = useDashboard();
   const pathname = usePathname();
 
@@ -59,7 +60,7 @@ export default function DashboardSidebar() {
       href: '/dashboard/finance',
       label: 'Finances & Dues',
       icon: DollarSign,
-      badge: pendingDepositsCount > 0 ? pendingDepositsCount : undefined,
+      badge: totalPendingTicketsCount > 0 ? totalPendingTicketsCount : undefined,
     },
   ];
 

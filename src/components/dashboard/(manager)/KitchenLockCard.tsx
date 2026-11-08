@@ -11,6 +11,10 @@ interface KitchenLockCardProps {
 }
 
 export default function KitchenLockCard({ token, onRefresh }: KitchenLockCardProps) {
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [data, setData] = useState<{ date: string; lunch: MealSessionDetail; dinner: MealSessionDetail } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,10 +23,32 @@ export default function KitchenLockCard({ token, onRefresh }: KitchenLockCardPro
   const [menuInput, setMenuInput] = useState('');
   const [locking, setLocking] = useState(false);
 
-  const fetchStatus = async () => {
+  const getRollingDays = () => {
+    const days: { date: string; label: string; isToday: boolean }[] = [];
+    for (let i = 0; i <= 3; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      days.push({
+        date: dateStr,
+        label:
+          i === 0
+            ? 'Today (আজ)'
+            : i === 1
+            ? 'Tomorrow (আগামীকাল)'
+            : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        isToday: i === 0,
+      });
+    }
+    return days;
+  };
+
+  const rollingDays = getRollingDays();
+
+  const fetchStatus = async (targetDate = selectedDate) => {
     try {
       setLoading(true);
-      const res = await fetch('/api/records/lock-session', {
+      const res = await fetch(`/api/records/lock-session?date=${targetDate}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -37,8 +63,23 @@ export default function KitchenLockCard({ token, onRefresh }: KitchenLockCardPro
   };
 
   useEffect(() => {
-    fetchStatus();
-  }, [token]);
+    fetchStatus(selectedDate);
+  }, [token, selectedDate]);
+
+  // Reactive listener when any member toggles a meal
+  useEffect(() => {
+    const handleMealChanged = () => {
+      fetchStatus(selectedDate);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('meal-requests-changed', handleMealChanged);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('meal-requests-changed', handleMealChanged);
+      }
+    };
+  }, [selectedDate]);
 
   const openLockModal = (mealType: 'lunch' | 'dinner') => {
     const session = mealType === 'lunch' ? data?.lunch : data?.dinner;
@@ -120,11 +161,30 @@ export default function KitchenLockCard({ token, onRefresh }: KitchenLockCardPro
           </div>
         </div>
         <button
-          onClick={fetchStatus}
+          onClick={() => fetchStatus(selectedDate)}
           className="text-xs text-zinc-400 hover:text-white px-2.5 py-1 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 transition-colors cursor-pointer"
         >
           Refresh
         </button>
+      </div>
+
+      {/* Rolling 3-Day Advance Schedule Switcher */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-3 mb-3 border-b border-zinc-800/60">
+        <span className="text-[11px] font-bold uppercase text-zinc-400 mr-1 whitespace-nowrap">Schedule Date:</span>
+        {rollingDays.map(d => (
+          <button
+            key={d.date}
+            type="button"
+            onClick={() => setSelectedDate(d.date)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+              selectedDate === d.date
+                ? 'bg-emerald-500 text-white shadow-sm'
+                : 'bg-zinc-800/80 text-zinc-400 hover:text-white hover:bg-zinc-800'
+            }`}
+          >
+            {d.label}
+          </button>
+        ))}
       </div>
 
       {/* Two Column Grid: Lunch & Dinner */}
@@ -174,9 +234,16 @@ export default function KitchenLockCard({ token, onRefresh }: KitchenLockCardPro
           </div>
 
           {/* Member Preview Summary */}
-          <div className="mt-2.5 flex items-center justify-between text-[11px] text-zinc-400">
-            <span>সক্রিয় (খাবেন): <strong className="text-emerald-400">{lunch?.activeMembers?.length || 0}</strong></span>
-            <span>অফ রেখেছেন: <strong className="text-red-400">{lunch?.offMembers?.length || 0}</strong></span>
+          <div className="mt-2.5 space-y-1">
+            <div className="flex items-center justify-between text-[11px] text-zinc-400">
+              <span>সক্রিয় (খাবেন): <strong className="text-emerald-400">{lunch?.activeMembers?.length || 0}</strong></span>
+              <span>অফ রেখেছেন: <strong className="text-red-400">{lunch?.offMembers?.length || 0}</strong></span>
+            </div>
+            {lunch?.offMembers && lunch.offMembers.length > 0 && (
+              <p className="text-[10px] text-red-400/90 truncate font-medium">
+                অফ: {lunch.offMembers.map(m => m.name).join(', ')}
+              </p>
+            )}
           </div>
 
           {/* Action Button */}
@@ -190,7 +257,7 @@ export default function KitchenLockCard({ token, onRefresh }: KitchenLockCardPro
               }`}
             >
               <Lock className="w-3.5 h-3.5" />
-              <span>{lunch?.isLocked ? 'Update Menu / Relock Lunch' : "Lock Today's Lunch Headcount"}</span>
+              <span>{lunch?.isLocked ? 'Update Menu / Relock Lunch' : `Lock Lunch (${lunch?.totalCount || 0} Meals)`}</span>
             </button>
           </div>
         </div>
@@ -240,9 +307,16 @@ export default function KitchenLockCard({ token, onRefresh }: KitchenLockCardPro
           </div>
 
           {/* Member Preview Summary */}
-          <div className="mt-2.5 flex items-center justify-between text-[11px] text-zinc-400">
-            <span>সক্রিয় (খাবেন): <strong className="text-emerald-400">{dinner?.activeMembers?.length || 0}</strong></span>
-            <span>অফ রেখেছেন: <strong className="text-red-400">{dinner?.offMembers?.length || 0}</strong></span>
+          <div className="mt-2.5 space-y-1">
+            <div className="flex items-center justify-between text-[11px] text-zinc-400">
+              <span>সক্রিয় (খাবেন): <strong className="text-emerald-400">{dinner?.activeMembers?.length || 0}</strong></span>
+              <span>অফ রেখেছেন: <strong className="text-red-400">{dinner?.offMembers?.length || 0}</strong></span>
+            </div>
+            {dinner?.offMembers && dinner.offMembers.length > 0 && (
+              <p className="text-[10px] text-red-400/90 truncate font-medium">
+                অফ: {dinner.offMembers.map(m => m.name).join(', ')}
+              </p>
+            )}
           </div>
 
           {/* Action Button */}
@@ -256,7 +330,7 @@ export default function KitchenLockCard({ token, onRefresh }: KitchenLockCardPro
               }`}
             >
               <Lock className="w-3.5 h-3.5" />
-              <span>{dinner?.isLocked ? 'Update Menu / Relock Dinner' : "Lock Today's Dinner Headcount"}</span>
+              <span>{dinner?.isLocked ? 'Update Menu / Relock Dinner' : `Lock Dinner (${dinner?.totalCount || 0} Meals)`}</span>
             </button>
           </div>
         </div>

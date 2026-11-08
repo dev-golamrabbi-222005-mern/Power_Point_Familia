@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
     // Earliest bazaar in current month — meal countdown only begins once first bazaar is held!
     const currentMonthBazaars = db.bazaarExpenses.filter(
-      e => e.date.startsWith(currentMonth) && (e.status === 'approved' || e.status === 'pending')
+      e => e.date.startsWith(currentMonth) && e.status === 'approved'
     );
     const firstBazaarDate = currentMonthBazaars.length > 0
       ? currentMonthBazaars.map(e => e.date).sort()[0]
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
 
     const allMealsCount = isMonthMealOff ? 0 : computeMonthMeals();
     const totalBazaarExpenses = db.bazaarExpenses
-      .filter(e => (e.status === 'approved' || e.status === 'pending') && e.date.startsWith(currentMonth))
+      .filter(e => e.status === 'approved' && e.date.startsWith(currentMonth))
       .reduce((sum, e) => sum + e.totalCost, 0);
       
     const liveMealRate = (!isMonthMealOff && allMealsCount > 0 && totalBazaarExpenses > 0)

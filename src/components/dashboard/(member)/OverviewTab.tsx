@@ -299,32 +299,71 @@ export default function OverviewTab({ token, onError }: OverviewTabProps) {
 
       {/* === UNLOCKED LIVE BAZAAR DUTY HERO CARD === */}
       {!overview?.isMonthMealOff && todayBazaarAssignment && (
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-amber-500/10 border-2 border-emerald-500/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+        <div className={`p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md border-2 ${
+          todayBazaarAssignment.status === 'verified'
+            ? 'bg-gradient-to-r from-teal-500/15 via-emerald-500/10 to-zinc-900 border-teal-500/40'
+            : todayBazaarAssignment.status === 'submitted'
+            ? 'bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-zinc-900 border-amber-500/40'
+            : 'bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-amber-500/10 border-emerald-500/40'
+        }`}>
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-xl shadow-md">
+            <div className={`p-3 text-white rounded-xl shadow-md ${
+              todayBazaarAssignment.status === 'verified'
+                ? 'bg-gradient-to-br from-teal-500 to-emerald-600'
+                : todayBazaarAssignment.status === 'submitted'
+                ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                : 'bg-gradient-to-br from-emerald-500 to-teal-600'
+            }`}>
               <ShoppingBag className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-white">
-                  You have Live Bazaar Duty Today! (আজ আপনার বাজারের দায়িত্ব)
+                  {todayBazaarAssignment.status === 'verified'
+                    ? "Today's Bazaar Verified & Settled! (আজকের বাজার সম্পন্ন হয়েছে)"
+                    : todayBazaarAssignment.status === 'submitted'
+                    ? "Bazaar Bill Submitted! (বাজার জমা দেওয়া হয়েছে - অনুমোদনের অপেক্ষায়)"
+                    : "You have Live Bazaar Duty Today! (আজ আপনার বাজারের দায়িত্ব)"}
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500 text-white rounded-full uppercase tracking-wider animate-pulse">
-                  Active
+                <span className={`text-[10px] font-bold px-2 py-0.5 text-white rounded-full uppercase tracking-wider ${
+                  todayBazaarAssignment.status === 'verified'
+                    ? 'bg-teal-500'
+                    : todayBazaarAssignment.status === 'submitted'
+                    ? 'bg-amber-500 animate-pulse'
+                    : 'bg-emerald-500 animate-pulse'
+                }`}>
+                  {todayBazaarAssignment.status === 'verified'
+                    ? 'Settled'
+                    : todayBazaarAssignment.status === 'submitted'
+                    ? 'Awaiting Approval'
+                    : 'Active'}
                 </span>
               </div>
               <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">
-                Handover Cash from Manager: <strong className="text-amber-500 font-mono">৳{todayBazaarAssignment.allocatedCash ?? todayBazaarAssignment.budget ?? 0}</strong>
+                Handover Cash: <strong className="text-amber-500 font-mono">৳{todayBazaarAssignment.allocatedCash ?? todayBazaarAssignment.budget ?? 0}</strong>
                 {todayBazaarAssignment.member2Name && ` | Partner: ${todayBazaarAssignment.member2Name}`}
+                {todayBazaarAssignment.status === 'submitted' && ' | বিল ম্যানেজারের ভেরিফিকেশন টিকিটে জমা আছে'}
               </p>
             </div>
           </div>
           <button
             onClick={() => setIsLiveBazaarOpen(true)}
-            className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 whitespace-nowrap"
+            className={`px-4 py-2.5 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 whitespace-nowrap ${
+              todayBazaarAssignment.status === 'verified'
+                ? 'bg-teal-600 hover:bg-teal-500'
+                : todayBazaarAssignment.status === 'submitted'
+                ? 'bg-amber-600 hover:bg-amber-500'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500'
+            }`}
           >
             <ShoppingBag className="w-4 h-4" />
-            <span>Open Live Market Mode</span>
+            <span>
+              {todayBazaarAssignment.status === 'verified'
+                ? 'View Verified Bill'
+                : todayBazaarAssignment.status === 'submitted'
+                ? 'View Submitted Bill & Items'
+                : 'Open Live Market Mode'}
+            </span>
           </button>
         </div>
       )}

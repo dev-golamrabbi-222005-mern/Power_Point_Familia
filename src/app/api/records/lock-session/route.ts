@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/src/lib/auth';
 import { getDb, saveDb, ensureDbInit } from '@/src/lib/db';
 import { getDhakaTime } from '@/src/lib/utils';
-import { DailyMealDay, MealSessionDetail } from '@/src/types';
+import { DailyMealDay, MealSessionDetail, MealSessionMember, MealSessionOffMember } from '@/src/types';
 
 // Helper to create empty session
 function createEmptySession(): MealSessionDetail {
@@ -46,24 +46,32 @@ export async function GET(req: NextRequest) {
       }
 
       // Live calculation if not locked yet
-      const active: { userId: string; name: string; count: number }[] = [];
-      const off: { userId: string; name: string; reason?: string }[] = [];
+      const active: MealSessionMember[] = [];
+      const off: MealSessionOffMember[] = [];
 
       for (const m of eligibleMembers) {
+        const mEmail = m.email?.toLowerCase().trim();
         const rec = db.records.find(
-          (r) => r.userId === m.id && r.date === date && r.mealType === mealType
+          (r) =>
+            ((mEmail && r.userEmail && r.userEmail.toLowerCase().trim() === mEmail) ||
+              (mEmail && r.userId && r.userId.toLowerCase().trim() === mEmail) ||
+              r.userId === m.id) &&
+            r.date === date &&
+            r.mealType === mealType
         );
 
         const isOff = rec && (rec.count === 0 || rec.requestStatus === 'accepted');
         if (isOff) {
           off.push({
             userId: m.id,
+            userEmail: mEmail,
             name: m.name || m.email,
             reason: rec.requestReason || 'Manually turned off',
           });
         } else {
           active.push({
             userId: m.id,
+            userEmail: mEmail,
             name: m.name || m.email,
             count: 1,
           });
@@ -137,14 +145,20 @@ export async function POST(req: NextRequest) {
       (u) => u.status === 'approved' && ['member', 'manager', 'admin'].includes(u.role)
     );
 
-    const activeMembers: { userId: string; name: string; count: number }[] = [];
-    const offMembers: { userId: string; name: string; reason?: string }[] = [];
+    const activeMembers: MealSessionMember[] = [];
+    const offMembers: MealSessionOffMember[] = [];
 
     const nowIso = new Date().toISOString();
 
     for (const m of eligibleMembers) {
+      const mEmail = m.email?.toLowerCase().trim();
       let recIndex = db.records.findIndex(
-        (r) => r.userId === m.id && r.date === date && r.mealType === mealType
+        (r) =>
+          ((mEmail && r.userEmail && r.userEmail.toLowerCase().trim() === mEmail) ||
+            (mEmail && r.userId && r.userId.toLowerCase().trim() === mEmail) ||
+            r.userId === m.id) &&
+          r.date === date &&
+          r.mealType === mealType
       );
 
       let rec = recIndex !== -1 ? db.records[recIndex] : null;
@@ -153,12 +167,14 @@ export async function POST(req: NextRequest) {
       if (isOff) {
         offMembers.push({
           userId: m.id,
+          userEmail: mEmail,
           name: m.name || m.email,
           reason: rec?.requestReason || 'Turned off',
         });
       } else {
         activeMembers.push({
           userId: m.id,
+          userEmail: mEmail,
           name: m.name || m.email,
           count: 1,
         });
@@ -168,12 +184,14 @@ export async function POST(req: NextRequest) {
           db.records.push({
             id: `rec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             userId: m.id,
+            userEmail: mEmail,
             date,
             mealType,
             count: 1,
           });
         } else {
           rec.count = 1;
+          rec.userEmail = mEmail || rec.userEmail;
         }
       }
     }

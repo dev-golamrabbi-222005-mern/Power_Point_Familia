@@ -86,9 +86,10 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Find existing record for this user, date, mealType (matching userId or clean email)
+    // Find existing record for this user, date, mealType (matching userEmail or userId)
     const existingRecordIndex = db.records.findIndex(
-      r => (r.userId === userId || (cleanEmail && r.userId === cleanEmail)) &&
+      r => ((r.userEmail && cleanEmail && r.userEmail.toLowerCase().trim() === cleanEmail) ||
+            r.userId === userId || (cleanEmail && r.userId === cleanEmail)) &&
            r.date === date &&
            r.mealType === mealType
     );
@@ -101,6 +102,7 @@ export async function POST(req: NextRequest) {
       record = db.records[existingRecordIndex];
       const oldCount = record.count;
       record.count = newCount;
+      record.userEmail = cleanEmail || record.userEmail;
       record.updatedAt = new Date().toISOString();
       // If toggled directly before cutoff, clear any old requestStatus
       if (!isToday || (mealType === 'lunch' && currentHour < 9) || (mealType === 'dinner' && currentHour < 15)) {
@@ -124,6 +126,7 @@ export async function POST(req: NextRequest) {
       record = {
         id: `rec-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         userId,
+        userEmail: cleanEmail,
         date,
         mealType,
         count: newCount,
@@ -161,6 +164,7 @@ export async function POST(req: NextRequest) {
               _id: record.id,
               id: record.id,
               userId: record.userId,
+              userEmail: record.userEmail || cleanEmail,
               date: record.date,
               mealType: record.mealType,
               count: record.count,
@@ -213,12 +217,14 @@ export async function GET(req: NextRequest) {
     const cleanEmail = user?.email?.toLowerCase().trim();
 
     const lunchRecord = db.records.find(
-      r => (r.userId === userId || (cleanEmail && r.userId === cleanEmail)) &&
+      r => ((r.userEmail && cleanEmail && r.userEmail.toLowerCase().trim() === cleanEmail) ||
+            r.userId === userId || (cleanEmail && r.userId === cleanEmail)) &&
            r.date === date &&
            r.mealType === 'lunch'
     );
     const dinnerRecord = db.records.find(
-      r => (r.userId === userId || (cleanEmail && r.userId === cleanEmail)) &&
+      r => ((r.userEmail && cleanEmail && r.userEmail.toLowerCase().trim() === cleanEmail) ||
+            r.userId === userId || (cleanEmail && r.userId === cleanEmail)) &&
            r.date === date &&
            r.mealType === 'dinner'
     );

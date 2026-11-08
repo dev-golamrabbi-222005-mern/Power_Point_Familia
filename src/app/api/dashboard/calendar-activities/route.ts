@@ -62,6 +62,10 @@ export async function GET(req: NextRequest) {
       // 3. Meal records & Daily Session for this date
       const dayMeal = db.dailyMeals?.find(d => d.date === date);
       const mealRecords = db.records.filter(r => r.date === date);
+      const autoBookDefault = db.settings?.autoBookMeals !== undefined ? db.settings.autoBookMeals : true;
+      const eligibleMembers = db.users.filter(
+        u => u.status === 'approved' && ['member', 'manager', 'admin'].includes(u.role)
+      );
 
       let lunchCount = 0;
       let dinnerCount = 0;
@@ -77,12 +81,30 @@ export async function GET(req: NextRequest) {
         lunchCount = dayMeal.lunch.totalCount || 0;
         lunchMenu = dayMeal.lunch.menu || '';
         isLunchLocked = true;
-        myLunch = Boolean(dayMeal.lunch.activeMembers?.some(m => m.userId === userId || (cleanEmail && (m as any).userEmail === cleanEmail)));
+        myLunch = Boolean(
+          dayMeal.lunch.activeMembers?.some(
+            m => m.userId === userId || (cleanEmail && (m.userEmail === cleanEmail || m.userId === cleanEmail))
+          )
+        );
       } else {
-        const lunchRecs = mealRecords.filter(r => r.mealType === 'lunch');
-        lunchCount = lunchRecs.reduce((sum, r) => sum + r.count, 0);
-        const myRec = lunchRecs.find(r => r.userId === userId || (cleanEmail && r.userId === cleanEmail));
-        myLunch = myRec ? myRec.count > 0 : false;
+        lunchMenu = dayMeal?.lunch?.menu || '';
+        let calcLunch = 0;
+        for (const m of eligibleMembers) {
+          const mEmail = m.email?.toLowerCase().trim();
+          const mRec = mealRecords.find(
+            r =>
+              r.mealType === 'lunch' &&
+              ((mEmail && r.userEmail && r.userEmail.toLowerCase().trim() === mEmail) ||
+                (mEmail && r.userId && r.userId.toLowerCase().trim() === mEmail) ||
+                r.userId === m.id)
+          );
+          const count = mRec !== undefined ? mRec.count : (autoBookDefault ? 1 : 0);
+          calcLunch += count;
+          if (m.id === userId || (cleanEmail && mEmail === cleanEmail)) {
+            myLunch = count > 0;
+          }
+        }
+        lunchCount = calcLunch;
       }
 
       // Dinner
@@ -90,12 +112,30 @@ export async function GET(req: NextRequest) {
         dinnerCount = dayMeal.dinner.totalCount || 0;
         dinnerMenu = dayMeal.dinner.menu || '';
         isDinnerLocked = true;
-        myDinner = Boolean(dayMeal.dinner.activeMembers?.some(m => m.userId === userId || (cleanEmail && (m as any).userEmail === cleanEmail)));
+        myDinner = Boolean(
+          dayMeal.dinner.activeMembers?.some(
+            m => m.userId === userId || (cleanEmail && (m.userEmail === cleanEmail || m.userId === cleanEmail))
+          )
+        );
       } else {
-        const dinnerRecs = mealRecords.filter(r => r.mealType === 'dinner');
-        dinnerCount = dinnerRecs.reduce((sum, r) => sum + r.count, 0);
-        const myRec = dinnerRecs.find(r => r.userId === userId || (cleanEmail && r.userId === cleanEmail));
-        myDinner = myRec ? myRec.count > 0 : false;
+        dinnerMenu = dayMeal?.dinner?.menu || '';
+        let calcDinner = 0;
+        for (const m of eligibleMembers) {
+          const mEmail = m.email?.toLowerCase().trim();
+          const mRec = mealRecords.find(
+            r =>
+              r.mealType === 'dinner' &&
+              ((mEmail && r.userEmail && r.userEmail.toLowerCase().trim() === mEmail) ||
+                (mEmail && r.userId && r.userId.toLowerCase().trim() === mEmail) ||
+                r.userId === m.id)
+          );
+          const count = mRec !== undefined ? mRec.count : (autoBookDefault ? 1 : 0);
+          calcDinner += count;
+          if (m.id === userId || (cleanEmail && mEmail === cleanEmail)) {
+            myDinner = count > 0;
+          }
+        }
+        dinnerCount = calcDinner;
       }
 
       const mealSummary = {

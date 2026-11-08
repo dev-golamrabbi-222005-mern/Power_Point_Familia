@@ -21,6 +21,8 @@ interface DashboardContextType {
   pendingDepositsCount: number;
   pendingUsersCount: number;
   pendingMealRequestsCount: number;
+  pendingBazaarCount: number;
+  totalPendingTicketsCount: number;
   todayBazaarAssignment: BazaarAssignment | null;
   refreshSystemData: () => Promise<void>;
   refreshUsers: () => Promise<void>;
@@ -57,6 +59,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [loadingSystem, setLoadingSystem] = useState<boolean>(true);
   const [pendingDepositsCount, setPendingDepositsCount] = useState<number>(0);
   const [pendingMealRequestsCount, setPendingMealRequestsCount] = useState<number>(0);
+  const [pendingBazaarCount, setPendingBazaarCount] = useState<number>(0);
   const [todayBazaarAssignment, setTodayBazaarAssignment] = useState<BazaarAssignment | null>(null);
 
   // Modal states
@@ -162,6 +165,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           } catch (e) {}
         }
       }
+
+      // If manager/admin, also refresh pending bazaar expenses count
+      if (user.role === 'manager' || user.role === 'admin') {
+        const expRes = await fetch('/api/bazaar/expense', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (expRes.ok) {
+          const exps = await expRes.json();
+          const pending = exps.filter((e: any) => e.status === 'pending').length;
+          setPendingBazaarCount(pending);
+        }
+      }
     } catch (e) {
       console.warn('Network offline or error fetching bazaar assignment, checking offline cache');
       if (typeof window !== 'undefined') {
@@ -231,6 +246,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, [refreshMealRequests, refreshBazaarAssignment]);
 
   const pendingUsersCount = allUsers.filter(u => u.status === 'pending').length;
+  const totalPendingTicketsCount = pendingDepositsCount + pendingBazaarCount + pendingMealRequestsCount;
 
   return (
     <DashboardContext.Provider
@@ -251,6 +267,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         pendingDepositsCount,
         pendingUsersCount,
         pendingMealRequestsCount,
+        pendingBazaarCount,
+        totalPendingTicketsCount,
         todayBazaarAssignment,
         refreshSystemData,
         refreshUsers,

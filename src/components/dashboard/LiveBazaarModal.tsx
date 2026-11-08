@@ -45,6 +45,7 @@ export default function LiveBazaarModal({
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [submittedExpense, setSubmittedExpense] = useState<any | null>(null);
 
   // New extra item input
   const [showAddExtra, setShowAddExtra] = useState(false);
@@ -131,11 +132,31 @@ export default function LiveBazaarModal({
     }
   }, [flushOfflineBazaarQueue]);
 
-  // Initialize data and restore draft if present
+  // Initialize data and restore draft or fetch submitted bill
   useEffect(() => {
     if (assignment) {
       const cash = assignment.allocatedCash ?? assignment.budget ?? 0;
       setAllocatedCash(cash);
+
+      // If assignment is already submitted or verified, fetch submitted bill from server
+      if (assignment.status === 'submitted' || assignment.status === 'verified') {
+        fetch('/api/bazaar/expense', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(res => res.ok ? res.json() : [])
+          .then((exps: any[]) => {
+            const match = exps.find(e => e.assignmentId === assignment.id || e.date === assignment.date);
+            if (match) {
+              setSubmittedExpense(match);
+              if (match.items && match.items.length > 0) setItems(match.items);
+              if (match.remarks) setRemarks(match.remarks);
+              if (match.receiptImage) setReceiptImage(match.receiptImage);
+              if (match.allocatedCash !== undefined) setAllocatedCash(match.allocatedCash);
+            }
+          })
+          .catch(e => console.error('Error fetching submitted expense for modal', e));
+        return;
+      }
 
       let initialItems: BazaarItem[] = [];
       if (assignment.items && assignment.items.length > 0) {
@@ -177,7 +198,7 @@ export default function LiveBazaarModal({
 
       setItems(initialItems);
     }
-  }, [assignment]);
+  }, [assignment, token]);
 
   // Auto-save draft on changes
   useEffect(() => {
@@ -190,6 +211,8 @@ export default function LiveBazaarModal({
   }, [assignment, items, remarks, receiptImage]);
 
   if (!isOpen || !assignment) return null;
+
+  const isSubmitted = assignment.status === 'submitted' || assignment.status === 'verified' || !!submittedExpense;
 
   // Real-time calculations
   const totalSpent = items.reduce((sum, item) => sum + (Number(item.cost) || 0), 0);
@@ -392,6 +415,34 @@ export default function LiveBazaarModal({
 
         {/* Content Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
+          {/* Submitted / Verified Partner Sync Banner */}
+          {isSubmitted && (
+            <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+              assignment.status === 'verified'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-200'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className={`w-5 h-5 shrink-0 ${assignment.status === 'verified' ? 'text-emerald-500' : 'text-amber-500'}`} />
+                <div>
+                  <p className="text-xs sm:text-sm font-extrabold text-zinc-900 dark:text-white">
+                    {assignment.status === 'verified'
+                      ? '✓ বাজার সফলভাবে অনুমোদিত ও সমন্বিত হয়েছে'
+                      : '✓ বাজার জমা দেওয়া হয়েছে — ম্যানেজারের অনুমোদনের অপেক্ষায়'}
+                  </p>
+                  <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                    {submittedExpense?.userName ? `জমা দিয়েছেন: ${submittedExpense.userName}` : 'পার্টনারের জমা দেওয়া বিল'} | মোট খরচ: ৳{totalSpent}
+                  </p>
+                </div>
+              </div>
+              <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full whitespace-nowrap ${
+                assignment.status === 'verified' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white animate-pulse'
+              }`}>
+                {assignment.status === 'verified' ? 'Verified' : 'Submitted'}
+              </span>
+            </div>
+          )}
+
           {successMsg && (
             <div className="p-3 bg-emerald-500/10 border border-emerald-500 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-bold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -423,13 +474,15 @@ export default function LiveBazaarModal({
               <span>Grocery Checklist (বাজারের ফর্দ ও প্রকৃত হিসাব)</span>
               <span className="text-xs font-normal text-zinc-400">({items.length} items)</span>
             </h3>
-            <button
-              onClick={() => setShowAddExtra(!showAddExtra)}
-              className="text-xs px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Extra Item (+)</span>
-            </button>
+            {!isSubmitted && (
+              <button
+                onClick={() => setShowAddExtra(!showAddExtra)}
+                className="text-xs px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Extra Item (+)</span>
+              </button>
+            )}
           </div>
 
           {/* Inline Add Extra Item Form */}
@@ -535,8 +588,9 @@ export default function LiveBazaarModal({
                       type="text"
                       placeholder="Qty (2kg)"
                       value={item.qty || ''}
+                      disabled={isSubmitted}
                       onChange={(e) => handleItemChange(idx, 'qty', e.target.value)}
-                      className="w-20 px-2 py-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white"
+                      className="w-20 px-2 py-1 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white disabled:opacity-75 disabled:cursor-not-allowed"
                     />
 
                     <div className="relative">
@@ -545,19 +599,22 @@ export default function LiveBazaarModal({
                         type="number"
                         placeholder="Cost"
                         value={item.cost || ''}
+                        disabled={isSubmitted}
                         onChange={(e) => handleItemChange(idx, 'cost', e.target.value)}
-                        className="w-24 pl-5 pr-2 py-1 text-xs font-mono font-bold bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white"
+                        className="w-24 pl-5 pr-2 py-1 text-xs font-mono font-bold bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white disabled:opacity-75 disabled:cursor-not-allowed"
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteItem(idx)}
-                      className="p-1 text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
-                      title="Remove item"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {!isSubmitted && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteItem(idx)}
+                        className="p-1 text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
+                        title="Remove item"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -571,23 +628,27 @@ export default function LiveBazaarModal({
                 <Camera className="w-3.5 h-3.5 text-blue-500" />
                 <span>Market Receipt / Memo Photo (মেমোর ছবি)</span>
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleImageUpload}
-                className="w-full text-xs text-zinc-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-600 dark:file:bg-blue-900/30 dark:file:text-blue-300 hover:file:bg-blue-500/20 cursor-pointer"
-              />
+              {!isSubmitted && (
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleImageUpload}
+                  className="w-full text-xs text-zinc-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-600 dark:file:bg-blue-900/30 dark:file:text-blue-300 hover:file:bg-blue-500/20 cursor-pointer"
+                />
+              )}
               {receiptImage && (
-                <div className="mt-2 relative w-20 h-20 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                <div className="mt-2 relative w-24 h-24 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
                   <img src={receiptImage} alt="Receipt preview" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setReceiptImage(null)}
-                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 shadow-sm"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                  {!isSubmitted && (
+                    <button
+                      type="button"
+                      onClick={() => setReceiptImage(null)}
+                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 shadow-sm"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -598,10 +659,11 @@ export default function LiveBazaarModal({
               </label>
               <textarea
                 value={remarks}
+                disabled={isSubmitted}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder="যেমন: আলুর দাম কম ছিল, পেঁয়াজের দাম কিছুটা বেশি..."
                 rows={2}
-                className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white"
+                className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white disabled:opacity-75 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -637,23 +699,49 @@ export default function LiveBazaarModal({
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
+            {isSubmitted ? (
+              <div className="w-full flex items-center justify-between gap-2">
+                <span className={`text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 ${
+                  assignment.status === 'verified'
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                    : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse'
+                }`}>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>
+                    {assignment.status === 'verified'
+                      ? 'বাজার যাচাই ও ক্যাশ সমন্বয় সম্পন্ন'
+                      : 'বিল জমা হয়েছে — ম্যানেজারের টিকিট অনুমোদনের অপেক্ষায়'}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-5 py-2.5 bg-zinc-900 dark:bg-zinc-700 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
 
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={submitting || items.length === 0}
-              className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <Receipt className="w-4 h-4" />
-              <span>{submitting ? 'Submitting...' : 'Submit Bazaar Bill (হিসাব জমা দিন)'}</span>
-            </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting || items.length === 0}
+                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Receipt className="w-4 h-4" />
+                  <span>{submitting ? 'Submitting...' : 'Submit Bazaar Bill (হিসাব জমা দিন)'}</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

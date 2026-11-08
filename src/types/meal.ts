@@ -9,6 +9,7 @@ export interface MealMenu {
 export interface MealRecord {
   id: string;
   userId: string;
+  userEmail?: string;
   date: string; // YYYY-MM-DD
   mealType: 'lunch' | 'dinner';
   count: number; // e.g. 0, 1, 2, etc.
@@ -86,12 +87,14 @@ export interface EmergencyMealRequest {
 
 export interface MealSessionMember {
   userId: string;
+  userEmail?: string;
   name: string;
   count: number;
 }
 
 export interface MealSessionOffMember {
   userId: string;
+  userEmail?: string;
   name: string;
   reason?: string;
 }

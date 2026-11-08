@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     const allMealsCount = isMonthMealOff ? 0 : activeRecords.reduce((sum, r) => sum + r.count, 0);
     const totalBazaarExpenses = db.bazaarExpenses
-      .filter(e => (e.status === 'approved' || e.status === 'pending') && e.date.startsWith(currentMonth))
+      .filter(e => e.status === 'approved' && e.date.startsWith(currentMonth))
       .reduce((sum, e) => sum + e.totalCost, 0);
     
     const baseRate = db.settings?.mealRate || 45;

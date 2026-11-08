@@ -34,6 +34,7 @@ export default function DashboardTopBar() {
     pendingDepositsCount,
     pendingUsersCount,
     pendingMealRequestsCount,
+    pendingBazaarCount,
     setIsProfileOpen,
     setIsQuickApproveOpen,
   } = useDashboard();
@@ -84,6 +85,7 @@ export default function DashboardTopBar() {
   const totalNotifCount =
     (user.role === 'admin' ? pendingUsersCount : 0) +
     (user.role === 'manager' || user.role === 'admin' ? pendingDepositsCount : 0) +
+    (user.role === 'manager' || user.role === 'admin' ? pendingBazaarCount : 0) +
     (user.role === 'manager' || user.role === 'admin' ? pendingMealRequestsCount : 0);
 
   const handleLogout = () => {
@@ -123,16 +125,16 @@ export default function DashboardTopBar() {
           {/* Live Meal Rate Pill */}
           <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1 bg-zinc-900/90 border border-zinc-800 rounded-xl text-[11px] sm:text-xs font-bold shadow-xs shrink-0">
             <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20 shrink-0" />
-            <span className="text-zinc-200 whitespace-nowrap">
+            <span className="text-zinc-200 whitespace-nowrap font-mono">
               {liveMealRate > 0 ? (
                 <>
-                  ৳{liveMealRate.toFixed(1)}
-                  <span className="hidden md:inline text-[10px] text-zinc-400 font-normal">/Meal</span>
+                  ৳{liveMealRate.toFixed(2)}
+                  <span className="hidden md:inline text-[10px] text-zinc-400 font-normal font-sans">/Meal</span>
                 </>
               ) : (
                 <>
-                  ৳0.0
-                  <span className="hidden md:inline text-[10px] text-zinc-400 font-normal"> (Est: ৳{baseRate})</span>
+                  ৳0.00
+                  <span className="hidden md:inline text-[10px] text-zinc-400 font-normal font-sans"> (Est: ৳{baseRate})</span>
                 </>
               )}
             </span>
@@ -199,6 +201,25 @@ export default function DashboardTopBar() {
                         </div>
                       </div>
                       <ArrowRight className="w-3.5 h-3.5 text-teal-400" />
+                    </Link>
+                  )}
+
+                  {(user.role === 'manager' || user.role === 'admin') && pendingBazaarCount > 0 && (
+                    <Link
+                      href="/dashboard/tickets"
+                      onClick={() => setNotifDropdownOpen(false)}
+                      className="p-2.5 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-between cursor-pointer hover:bg-orange-500/15 transition-colors block"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-orange-400" />
+                        <div>
+                          <p className="text-xs font-bold text-orange-300">
+                            {pendingBazaarCount} Pending Bazaar Bills
+                          </p>
+                          <p className="text-[10px] text-zinc-400">Verification & Cash Cutoff required</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-orange-400" />
                     </Link>
                   )}
 

@@ -107,7 +107,12 @@ export async function GET(req: NextRequest) {
       for (const m of eligibleMembers) {
         const mEmail = m.email?.toLowerCase().trim();
         const mRec = db.records.find(
-          r => (r.userId === m.id || (mEmail && r.userId === mEmail)) && r.date === todayStr && r.mealType === 'lunch'
+          r =>
+            ((mEmail && r.userEmail && r.userEmail.toLowerCase().trim() === mEmail) ||
+              (mEmail && r.userId && r.userId.toLowerCase().trim() === mEmail) ||
+              r.userId === m.id) &&
+            r.date === todayStr &&
+            r.mealType === 'lunch'
         );
         const count = mRec !== undefined ? mRec.count : (autoBookDefault ? 1 : 0);
         todayLunchMeals += count;
@@ -120,7 +125,12 @@ export async function GET(req: NextRequest) {
       for (const m of eligibleMembers) {
         const mEmail = m.email?.toLowerCase().trim();
         const mRec = db.records.find(
-          r => (r.userId === m.id || (mEmail && r.userId === mEmail)) && r.date === todayStr && r.mealType === 'dinner'
+          r =>
+            ((mEmail && r.userEmail && r.userEmail.toLowerCase().trim() === mEmail) ||
+              (mEmail && r.userId && r.userId.toLowerCase().trim() === mEmail) ||
+              r.userId === m.id) &&
+            r.date === todayStr &&
+            r.mealType === 'dinner'
         );
         const count = mRec !== undefined ? mRec.count : (autoBookDefault ? 1 : 0);
         todayDinnerMeals += count;

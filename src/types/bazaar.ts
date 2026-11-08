@@ -53,6 +53,9 @@ export interface BazaarExpense {
   verifiedAt?: string;
   verifiedBy?: string;
   userName?: string; // Hydrated
+  userEmail?: string;
+  partnerName?: string;
+  partnerEmail?: string;
 }
 
 export interface BazaarActivityDetail {

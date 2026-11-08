@@ -14,9 +14,11 @@ import {
   Receipt, 
   Wallet,
   AlertTriangle,
-  User
+  User,
+  ShoppingBag,
+  Eye,
 } from 'lucide-react';
-import { Deposit, RefundRequest, User as UserType } from '@/src/types';
+import { Deposit, RefundRequest, User as UserType, BazaarExpense } from '@/src/types';
 import EmergencyMealRequestCard from './emergency-meal-request-card';
 import { showSuccessAlert, showErrorAlert, showWarningAlert } from '@/src/lib/alerts';
 
@@ -31,8 +33,11 @@ export default function ManagerTicketsTab({ token, onError, onRefreshData, prefi
   const [deposits, setDeposits] = useState<(Deposit & { userEmail?: string })[]>([]);
   const [refunds, setRefunds] = useState<RefundRequest[]>([]);
   const [lateRequests, setLateRequests] = useState<any[]>([]);
+  const [bazaarExpenses, setBazaarExpenses] = useState<BazaarExpense[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedReceiptImage, setSelectedReceiptImage] = useState<string | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   // Filters
   const [ticketFilter, setTicketFilter] = useState<'pending' | 'all'>('pending');
@@ -51,17 +56,19 @@ export default function ManagerTicketsTab({ token, onError, onRefreshData, prefi
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const [depRes, refRes, usersRes, lateRes] = await Promise.all([
+      const [depRes, refRes, usersRes, lateRes, expRes] = await Promise.all([
         fetch('/api/deposits', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/refunds', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/members', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/records/request-meal-off', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/bazaar/expense', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       if (depRes.ok) setDeposits(await depRes.json());
       if (refRes.ok) setRefunds(await refRes.json());
       if (usersRes.ok) setUsers(await usersRes.json());
       if (lateRes.ok) setLateRequests(await lateRes.json());
+      if (expRes.ok) setBazaarExpenses(await expRes.json());
     } catch (err) {
       console.error('Error fetching tickets', err);
       onError?.('Failed to load tickets');
@@ -116,6 +123,39 @@ export default function ManagerTicketsTab({ token, onError, onRefreshData, prefi
       onRefreshData?.();
     } catch (err: any) {
       showErrorAlert('Action Failed', err.message || 'Action failed');
+    }
+  };
+
+  const handleBazaarAction = async (id: string, status: 'approved' | 'rejected') => {
+    try {
+      setActionLoadingId(id);
+      const res = await fetch(`/api/bazaar/expense/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Action failed');
+      }
+      showSuccessAlert(
+        status === 'approved' ? 'বাজার বিল সফলভাবে অনুমোদিত হয়েছে!' : 'বাজার বিল বাতিল করা হয়েছে',
+        status === 'approved'
+          ? 'মেসের মিল ক্যাশ থেকে বিলের টাকা সমন্বয় করা হয়েছে এবং পেয়ার রোটেশন আপডেট হয়েছে।'
+          : 'মেম্বার বিলটি সংশোধন করতে পারবেন।'
+      );
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bazaar-updated'));
+      }
+      fetchTickets();
+      onRefreshData?.();
+    } catch (err: any) {
+      showErrorAlert('অ্যাকশন ব্যর্থ হয়েছে', err.message || 'Action failed');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -228,6 +268,179 @@ export default function ManagerTicketsTab({ token, onError, onRefreshData, prefi
                   }}
                 />
               ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bazaar Expense Verification Tickets Section */}
+      {bazaarExpenses.filter(e => ticketFilter === 'all' ? true : e.status === 'pending').length > 0 && (
+        <div className="space-y-3 p-4 md:p-5 bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-zinc-900 border border-orange-500/30 rounded-2xl shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-orange-500/20">
+            <div>
+              <h3 className="text-sm md:text-base font-extrabold text-white flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-orange-400" />
+                <span>Bazaar Expense Verification Tickets (বাজার ভেরিফিকেশন টিকিট)</span>
+                {bazaarExpenses.filter(e => e.status === 'pending').length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-500 text-white animate-pulse">
+                    {bazaarExpenses.filter(e => e.status === 'pending').length} Action Needed
+                  </span>
+                )}
+              </h3>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Verify shopper item checklist & bill amount. Approving deducts from mess cash and settles the pair.
+              </p>
+            </div>
+            <span className="text-xs font-bold text-orange-300">
+              Total Pending: ৳{bazaarExpenses.filter(e => e.status === 'pending').reduce((s, e) => s + (e.totalCost || 0), 0)}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 pt-1">
+            {bazaarExpenses
+              .filter(e => ticketFilter === 'all' ? true : e.status === 'pending')
+              .map(exp => {
+                const userObj = users.find(u => u.id === exp.userId);
+                const shopperName = exp.userName || userObj?.name || 'Shopper';
+                const shopperEmail = exp.userEmail || userObj?.email || '';
+                const handover = exp.allocatedCash ?? 0;
+                const returnCash = exp.returnedCash ?? Math.max(0, handover - exp.totalCost);
+
+                return (
+                  <div
+                    key={exp.id}
+                    className="p-4 bg-zinc-900/90 border border-zinc-800 rounded-xl space-y-3 shadow-md hover:border-orange-500/40 transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-sm text-white">{shopperName}</span>
+                          {exp.partnerName && (
+                            <span className="text-[11px] text-zinc-400 font-medium">
+                              (Partner: <strong className="text-zinc-300">{exp.partnerName}</strong>)
+                            </span>
+                          )}
+                        </div>
+                        {shopperEmail && (
+                          <p className="text-[11px] text-zinc-400 font-mono">{shopperEmail}</p>
+                        )}
+                        <p className="text-[10px] text-zinc-500 mt-0.5 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> Date: {exp.date}
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-base md:text-lg font-black text-amber-400 font-mono">
+                          ৳{exp.totalCost}
+                        </span>
+                        <p className="text-[10px] text-zinc-400">Total Spent</p>
+                      </div>
+                    </div>
+
+                    {/* Cash Allocation & Return Summary */}
+                    <div className="grid grid-cols-3 gap-2 p-2 bg-zinc-800/60 rounded-lg text-center text-xs">
+                      <div>
+                        <span className="text-[10px] text-zinc-400 block">Handover</span>
+                        <strong className="text-emerald-400 font-mono">৳{handover}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-zinc-400 block">Spent Bill</span>
+                        <strong className="text-amber-400 font-mono">৳{exp.totalCost}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-zinc-400 block">Returned</span>
+                        <strong className="text-teal-400 font-mono">৳{returnCash}</strong>
+                      </div>
+                    </div>
+
+                    {/* Itemized Checklist Preview */}
+                    {exp.items && exp.items.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                          Purchased Items ({exp.items.length}):
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                          {exp.items.map((it, idx) => (
+                            <span
+                              key={idx}
+                              className={`text-[11px] px-2 py-0.5 rounded-md font-semibold flex items-center gap-1 ${
+                                it.isExtra
+                                  ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+                                  : 'bg-zinc-800 text-zinc-200 border border-zinc-700/60'
+                              }`}
+                            >
+                              <span>{it.name}</span>
+                              {it.qty && <span className="text-zinc-400">({it.qty})</span>}
+                              <strong className="font-mono text-amber-300">৳{it.cost}</strong>
+                              {it.isExtra && (
+                                <span className="text-[9px] bg-orange-500 text-white px-1 py-0.2 rounded font-black">
+                                  Extra
+                                </span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Remarks & Receipt Button */}
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      {exp.remarks ? (
+                        <p className="text-xs text-zinc-400 italic truncate max-w-[200px]" title={exp.remarks}>
+                          "{exp.remarks}"
+                        </p>
+                      ) : (
+                        <span className="text-[10px] text-zinc-500">No remarks</span>
+                      )}
+
+                      {exp.receiptImage && (
+                        <button
+                          onClick={() => setSelectedReceiptImage(exp.receiptImage!)}
+                          className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-blue-400" />
+                          <span>View Receipt</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Status & Actions */}
+                    <div className="pt-2 border-t border-zinc-800 flex items-center justify-between gap-2">
+                      <span
+                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                          exp.status === 'approved'
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            : exp.status === 'rejected'
+                            ? 'bg-red-500/15 text-red-400 border border-red-500/30'
+                            : 'bg-amber-500/15 text-amber-300 border border-amber-500/30 animate-pulse'
+                        }`}
+                      >
+                        {exp.status === 'approved' ? '✓ Approved & Settle' : exp.status === 'rejected' ? '✕ Rejected' : '● Pending Manager Review'}
+                      </span>
+
+                      {exp.status === 'pending' && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleBazaarAction(exp.id, 'rejected')}
+                            disabled={actionLoadingId === exp.id}
+                            className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Reject</span>
+                          </button>
+                          <button
+                            onClick={() => handleBazaarAction(exp.id, 'approved')}
+                            disabled={actionLoadingId === exp.id}
+                            className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Approve & Deduct Cash</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
       )}
@@ -606,6 +819,31 @@ export default function ManagerTicketsTab({ token, onError, onRefreshData, prefi
                 </>
               )}
             </form>
+          </div>
+        </div>
+      )}
+      {/* Receipt Image Modal */}
+      {selectedReceiptImage && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-lg w-full p-4 space-y-3 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-amber-400" /> Bazaar Receipt Voucher
+              </h4>
+              <button
+                onClick={() => setSelectedReceiptImage(null)}
+                className="text-zinc-400 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto rounded-xl bg-black flex items-center justify-center p-2">
+              <img
+                src={selectedReceiptImage}
+                alt="Receipt Voucher"
+                className="max-h-[65vh] w-auto object-contain rounded-lg shadow-md"
+              />
+            </div>
           </div>
         </div>
       )}

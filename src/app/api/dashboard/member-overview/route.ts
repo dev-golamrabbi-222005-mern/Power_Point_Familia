@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
 
     // 2. Total month's bazaar expenses and first bazaar date
     const currentMonthBazaars = db.bazaarExpenses.filter(
-      (e) => (e.status === 'approved' || e.status === 'pending') && e.date.startsWith(currentMonth)
+      (e) => e.status === 'approved' && e.date.startsWith(currentMonth)
     );
     const firstBazaarDate = currentMonthBazaars.length > 0
       ? currentMonthBazaars.map((e) => e.date).sort()[0]
@@ -86,12 +86,17 @@ export async function GET(req: NextRequest) {
 
     if (todayDaily?.lunch?.isLocked) {
       todayMessLunch = todayDaily.lunch.totalCount || 0;
-      todayMyLunch = todayDaily.lunch.activeMembers?.some((m) => m.userId === userId || (cleanEmail && (m as any).userEmail === cleanEmail)) ? 1 : 0;
+      todayMyLunch = todayDaily.lunch.activeMembers?.some((m) => m.userId === userId || (cleanEmail && (m.userEmail === cleanEmail || m.userId === cleanEmail))) ? 1 : 0;
     } else {
       for (const m of eligibleMembers) {
         const mEmail = m.email?.toLowerCase().trim();
         const mRec = db.records.find(
-          r => (r.userId === m.id || (mEmail && r.userId === mEmail)) && r.date === today && r.mealType === 'lunch'
+          r =>
+            ((mEmail && r.userEmail && r.userEmail.toLowerCase().trim() === mEmail) ||
+              (mEmail && r.userId && r.userId.toLowerCase().trim() === mEmail) ||
+              r.userId === m.id) &&
+            r.date === today &&
+            r.mealType === 'lunch'
         );
         const count = mRec !== undefined ? mRec.count : (autoBookDefault ? 1 : 0);
         todayMessLunch += count;
@@ -106,12 +111,17 @@ export async function GET(req: NextRequest) {
 
     if (todayDaily?.dinner?.isLocked) {
       todayMessDinner = todayDaily.dinner.totalCount || 0;
-      todayMyDinner = todayDaily.dinner.activeMembers?.some((m) => m.userId === userId || (cleanEmail && (m as any).userEmail === cleanEmail)) ? 1 : 0;
+      todayMyDinner = todayDaily.dinner.activeMembers?.some((m) => m.userId === userId || (cleanEmail && (m.userEmail === cleanEmail || m.userId === cleanEmail))) ? 1 : 0;
     } else {
       for (const m of eligibleMembers) {
         const mEmail = m.email?.toLowerCase().trim();
         const mRec = db.records.find(
-          r => (r.userId === m.id || (mEmail && r.userId === mEmail)) && r.date === today && r.mealType === 'dinner'
+          r =>
+            ((mEmail && r.userEmail && r.userEmail.toLowerCase().trim() === mEmail) ||
+              (mEmail && r.userId && r.userId.toLowerCase().trim() === mEmail) ||
+              r.userId === m.id) &&
+            r.date === today &&
+            r.mealType === 'dinner'
         );
         const count = mRec !== undefined ? mRec.count : (autoBookDefault ? 1 : 0);
         todayMessDinner += count;
