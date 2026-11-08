@@ -11,11 +11,14 @@ export async function GET(req: NextRequest) {
     await ensureDbInit();
     const db = getDb();
     
+    const cleanEmail = user?.email?.toLowerCase().trim();
+    const userId = user!.id;
+    
     if (user!.role === 'manager' || user!.role === 'admin') {
       // Return all assignments with both member names hydrated
       const enriched = db.bazaarAssignments.map(a => {
-        const u1 = db.users.find(usr => usr.id === a.userId);
-        const u2 = db.users.find(usr => usr.id === a.member2Id);
+        const u1 = db.users.find(usr => usr.id === a.userId || (usr.email && usr.email.toLowerCase().trim() === a.userId));
+        const u2 = db.users.find(usr => usr.id === a.member2Id || (usr.email && usr.email.toLowerCase().trim() === a.member2Id));
         return {
           ...a,
           userName: u1 ? u1.name : 'Member 1',
@@ -26,10 +29,10 @@ export async function GET(req: NextRequest) {
     } else {
       // Members see assignments where they are either Member 1 or Member 2
       const enriched = db.bazaarAssignments
-        .filter(a => a.userId === user!.id || a.member2Id === user!.id)
+        .filter(a => a.userId === userId || a.member2Id === userId || (cleanEmail && (a.userId === cleanEmail || a.member2Id === cleanEmail)))
         .map(a => {
-          const u1 = db.users.find(usr => usr.id === a.userId);
-          const u2 = db.users.find(usr => usr.id === a.member2Id);
+          const u1 = db.users.find(usr => usr.id === a.userId || (usr.email && usr.email.toLowerCase().trim() === a.userId));
+          const u2 = db.users.find(usr => usr.id === a.member2Id || (usr.email && usr.email.toLowerCase().trim() === a.member2Id));
           return {
             ...a,
             userName: u1 ? u1.name : 'Member 1',

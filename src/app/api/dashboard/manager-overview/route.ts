@@ -95,17 +95,36 @@ export async function GET(req: NextRequest) {
     const eligibleMembers = db.users.filter(u => u.status === 'approved' && ['member', 'manager', 'admin'].includes(u.role));
     const memberCount = Math.max(activeMembers.length, 1);
 
-    // Mess total meal today: strictly count only locked/confirmed sessions
+    // Mess total meal today: calculated dynamically from locked headcount or active scheduled members
     const todayDaily = db.dailyMeals.find(d => d.date === todayStr);
+    const autoBookDefault = db.settings?.autoBookMeals !== undefined ? db.settings.autoBookMeals : true;
     let todayLunchMeals = 0;
     let todayDinnerMeals = 0;
 
     if (todayDaily?.lunch?.isLocked) {
       todayLunchMeals = todayDaily.lunch.totalCount || 0;
+    } else {
+      for (const m of eligibleMembers) {
+        const mEmail = m.email?.toLowerCase().trim();
+        const mRec = db.records.find(
+          r => (r.userId === m.id || (mEmail && r.userId === mEmail)) && r.date === todayStr && r.mealType === 'lunch'
+        );
+        const count = mRec !== undefined ? mRec.count : (autoBookDefault ? 1 : 0);
+        todayLunchMeals += count;
+      }
     }
 
     if (todayDaily?.dinner?.isLocked) {
       todayDinnerMeals = todayDaily.dinner.totalCount || 0;
+    } else {
+      for (const m of eligibleMembers) {
+        const mEmail = m.email?.toLowerCase().trim();
+        const mRec = db.records.find(
+          r => (r.userId === m.id || (mEmail && r.userId === mEmail)) && r.date === todayStr && r.mealType === 'dinner'
+        );
+        const count = mRec !== undefined ? mRec.count : (autoBookDefault ? 1 : 0);
+        todayDinnerMeals += count;
+      }
     }
 
     const messTotalMealsToday = todayLunchMeals + todayDinnerMeals;

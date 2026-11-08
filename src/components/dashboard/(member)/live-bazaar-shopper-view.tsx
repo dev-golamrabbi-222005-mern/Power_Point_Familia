@@ -75,12 +75,52 @@ export default function LiveBazaarShopperView({
     setItems((prev) => prev.filter((_, idx) => idx !== index));
   };
 
+  const queueOfflineSubmission = async (payload: any) => {
+    try {
+      const QUEUE_KEY = 'familia_offline_bazaar_queue';
+      let currentQueue: any[] = [];
+      try {
+        currentQueue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+      } catch (e) {
+        currentQueue = [];
+      }
+      currentQueue.push({ ...payload, queuedAt: new Date().toISOString() });
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(currentQueue));
+
+      await showSuccessAlert(
+        'রিকোয়েস্ট গ্রহণ করা হয়েছে! (অফলাইন মোড)',
+        'আপনার ডিভাইস বর্তমানে অফলাইনে আছে। বাজার সফলভাবে সংরক্ষিত হয়েছে। ইন্টারনেট সংযোগ পাওয়া মাত্রই স্বয়ংক্রিয়ভাবে ম্যানেজারের নিকট বাজার বিবরণী পৌঁছে যাবে।'
+      );
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bazaar-updated'));
+      }
+      if (onSubmitted) onSubmitted();
+    } catch (e) {
+      console.error('Error saving to offline queue', e);
+      showErrorAlert('Error', 'অফলাইনে তথ্য সংরক্ষণ করতে ব্যর্থ হয়েছে।');
+    }
+  };
+
   const handleSubmit = async () => {
     if (items.length === 0) {
       setError('Please add at least one bazaar item.');
       return;
     }
     setError('');
+    const payload = {
+      assignmentId,
+      date,
+      items,
+      totalCost,
+      remarks,
+    };
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await queueOfflineSubmission(payload);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch('/api/bazaar/expense', {
@@ -89,13 +129,7 @@ export default function LiveBazaarShopperView({
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          assignmentId,
-          date,
-          items,
-          totalCost,
-          remarks,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Submission failed');
@@ -103,10 +137,22 @@ export default function LiveBazaarShopperView({
         'বাজার সফলভাবে জমা হয়েছে!',
         'Bazaar details submitted successfully! Awaiting manager reconciliation.'
       );
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bazaar-updated'));
+      }
       if (onSubmitted) onSubmitted();
     } catch (err: any) {
-      setError(err.message || 'Network error');
-      showErrorAlert('Error', err.message || 'Network error');
+      if (
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        err?.message?.includes('fetch') ||
+        err?.message?.includes('Network') ||
+        err?.name === 'TypeError'
+      ) {
+        await queueOfflineSubmission(payload);
+      } else {
+        setError(err.message || 'Network error');
+        showErrorAlert('Error', err.message || 'Network error');
+      }
     } finally {
       setLoading(false);
     }

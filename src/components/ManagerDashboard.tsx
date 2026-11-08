@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User, MealMenu, SystemSettings } from '../types';
 import ManagerOverviewTab from './dashboard/(manager)/ManagerOverviewTab';
 import { TrendingUp, RefreshCw, Utensils, X, AlertTriangle } from 'lucide-react';
@@ -27,6 +27,10 @@ export default function ManagerDashboard({
 
   const [resetStatusMsg, setResetStatusMsg] = useState('');
   const [initiateResetLoading, setInitiateResetLoading] = useState(false);
+
+  const handleError = useCallback((msg: string) => {
+    console.error(msg);
+  }, []);
 
   const fetchSettings = async () => {
     try {
@@ -185,7 +189,7 @@ export default function ManagerDashboard({
       </div>
 
       {/* Manager Overview Content */}
-      <ManagerOverviewTab token={token} onError={(msg) => console.error(msg)} />
+      <ManagerOverviewTab token={token} onError={handleError} />
 
       {/* Request Month Meal Off Modal */}
       {isMealOffModalOpen && (

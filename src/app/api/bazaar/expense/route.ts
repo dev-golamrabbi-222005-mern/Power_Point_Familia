@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/src/lib/auth';
-import { getDb, saveDb, ensureDbInit } from '@/src/lib/db';
+import { getDb, saveDb, ensureDbInit, connectMongo } from '@/src/lib/db';
 import { BazaarExpense } from '@/src/types';
 
 export async function GET(req: NextRequest) {
@@ -10,10 +10,12 @@ export async function GET(req: NextRequest) {
 
     await ensureDbInit();
     const db = getDb();
+    const cleanEmail = user?.email?.toLowerCase().trim();
+    const userId = user!.id;
 
     if (user!.role === 'manager' || user!.role === 'admin') {
       const enriched = db.bazaarExpenses.map(e => {
-        const u = db.users.find(usr => usr.id === e.userId);
+        const u = db.users.find(usr => usr.id === e.userId || (usr.email && usr.email.toLowerCase().trim() === e.userId));
         const assign = db.bazaarAssignments.find(a => a.id === e.assignmentId);
         const partner = db.users.find(usr => usr.id === (assign?.userId === e.userId ? assign?.member2Id : assign?.userId));
         return { 
@@ -28,12 +30,16 @@ export async function GET(req: NextRequest) {
       const enriched = db.bazaarExpenses
         .filter(e => {
           const assign = db.bazaarAssignments.find(a => a.id === e.assignmentId);
-          return e.userId === user!.id || assign?.userId === user!.id || assign?.member2Id === user!.id;
+          return e.userId === userId || 
+                 (cleanEmail && e.userId === cleanEmail) ||
+                 assign?.userId === userId || 
+                 assign?.member2Id === userId ||
+                 (cleanEmail && (assign?.userId === cleanEmail || assign?.member2Id === cleanEmail));
         })
         .map(e => {
-          const u = db.users.find(usr => usr.id === e.userId);
+          const u = db.users.find(usr => usr.id === e.userId || (usr.email && usr.email.toLowerCase().trim() === e.userId));
           const assign = db.bazaarAssignments.find(a => a.id === e.assignmentId);
-          const partnerId = assign?.userId === user!.id ? assign?.member2Id : assign?.userId;
+          const partnerId = assign?.userId === userId ? assign?.member2Id : assign?.userId;
           const partner = db.users.find(usr => usr.id === partnerId);
           return { 
             ...e, 
@@ -65,13 +71,25 @@ export async function POST(req: NextRequest) {
 
     await ensureDbInit();
     const db = getDb();
+    const cleanEmail = user?.email?.toLowerCase().trim();
+    const userId = user!.id;
 
     // Verify the assignment belongs to this user (unless manager/admin)
     const assignment = db.bazaarAssignments.find(a => a.id === assignmentId);
     if (!assignment) {
       return NextResponse.json({ message: 'Bazaar assignment not found.' }, { status: 404 });
     }
-    if (assignment.userId !== user!.id && assignment.member2Id !== user!.id && user!.role !== 'manager' && user!.role !== 'admin') {
+
+    const isAuthorized = user!.role === 'manager' || user!.role === 'admin' ||
+      assignment.userId === userId ||
+      assignment.member2Id === userId ||
+      (cleanEmail && (assignment.userId === cleanEmail || assignment.member2Id === cleanEmail)) ||
+      (cleanEmail && (
+        db.users.find(u => u.id === assignment.userId || (u as any)._id === assignment.userId)?.email?.toLowerCase().trim() === cleanEmail ||
+        db.users.find(u => u.id === assignment.member2Id || (u as any)._id === assignment.member2Id)?.email?.toLowerCase().trim() === cleanEmail
+      ));
+
+    if (!isAuthorized) {
       return NextResponse.json({ message: 'This is not your assigned bazaar.' }, { status: 403 });
     }
 
@@ -79,17 +97,18 @@ export async function POST(req: NextRequest) {
     const finalTotal = totalCost !== undefined ? Number(totalCost) : calculatedTotal;
     const finalAllocated = Number(allocatedCash ?? assignment.allocatedCash ?? assignment.budget ?? 0);
     const finalReturned = returnedCash !== undefined ? Number(returnedCash) : Math.max(0, finalAllocated - finalTotal);
+    const nowIso = new Date().toISOString();
 
     // Update assignment status for BOTH assigned members automatically
     assignment.status = 'submitted';
     assignment.allocatedCash = finalAllocated;
     assignment.returnedCash = finalReturned;
     assignment.items = items;
-    assignment.submittedAt = new Date().toISOString();
-    assignment.submittedBy = user!.id;
+    assignment.submittedAt = nowIso;
+    assignment.submittedBy = userId;
 
     const newExpense: BazaarExpense = {
-      id: `bexp-${Date.now()}`,
+      id: `bexp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       assignmentId,
       userId: assignment.userId,
       date,
@@ -100,11 +119,38 @@ export async function POST(req: NextRequest) {
       status: 'pending',
       remarks,
       receiptImage,
-      submittedAt: new Date().toISOString(),
+      submittedAt: nowIso,
     };
 
     db.bazaarExpenses.push(newExpense);
     await saveDb(db);
+
+    // Direct atomic write to MongoDB
+    const dbMongo = await connectMongo();
+    if (dbMongo) {
+      try {
+        await dbMongo.collection('bazaarAssignments').updateOne(
+          { id: assignment.id },
+          {
+            $set: {
+              status: 'submitted',
+              allocatedCash: finalAllocated,
+              returnedCash: finalReturned,
+              items,
+              submittedAt: nowIso,
+              submittedBy: userId,
+            }
+          }
+        );
+        await dbMongo.collection('bazaarExpenses').updateOne(
+          { id: newExpense.id },
+          { $set: { _id: newExpense.id, ...newExpense } },
+          { upsert: true }
+        );
+      } catch (e) {
+        console.error('Direct MongoDB write error for bazaar expense:', e);
+      }
+    }
 
     return NextResponse.json({
       expense: newExpense,

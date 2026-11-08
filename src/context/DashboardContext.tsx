@@ -139,22 +139,39 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const refreshBazaarAssignment = useCallback(async () => {
     if (!token || !user) return;
+    const cleanEmail = user.email ? user.email.toLowerCase().trim() : '';
+    const userId = user.id;
+
+    const d = new Date();
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
     try {
       const res = await fetch('/api/bazaar/assign', {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const assignments: BazaarAssignment[] = await res.json();
-        const todayStr = new Date().toISOString().split('T')[0];
         const assigned = assignments.find(
-          a => (a.userId === user.id || a.member2Id === user.id) &&
-               a.date === todayStr &&
-               a.status === 'pending'
+          a => (a.userId === userId || a.member2Id === userId || (cleanEmail && (a.userId === cleanEmail || a.member2Id === cleanEmail))) &&
+               a.date === todayStr
         );
         setTodayBazaarAssignment(assigned || null);
+        if (assigned && typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('familia_today_bazaar_assignment', JSON.stringify(assigned));
+          } catch (e) {}
+        }
       }
     } catch (e) {
-      console.error('Error fetching today bazaar assignment', e);
+      console.warn('Network offline or error fetching bazaar assignment, checking offline cache');
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem('familia_today_bazaar_assignment');
+          if (cached) {
+            setTodayBazaarAssignment(JSON.parse(cached));
+          }
+        } catch (err) {}
+      }
     }
   }, [token, user]);
 
@@ -170,7 +187,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         setPendingMealRequestsCount(pending);
       }
     } catch (e) {
-      console.error('Error fetching meal requests', e);
+      // quiet
     }
   }, [token, user]);
 
@@ -184,32 +201,34 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     ]);
   }, [refreshSystemData, refreshUsers, refreshDeposits, refreshBazaarAssignment, refreshMealRequests]);
 
+  // Initial load on token ready
   useEffect(() => {
     if (token) {
       refreshAll();
     }
+  }, [token]);
 
-    // Smart background poll for meal-off requests every 6 seconds for managers/admins
-    const pollInterval = setInterval(() => {
-      if (token && user && (user.role === 'manager' || user.role === 'admin')) {
-        refreshMealRequests();
-      }
-    }, 6000);
-
+  // Event-driven reactive sync (Zero infinite polling loops)
+  useEffect(() => {
     const handleCustomMealReqChange = () => {
       refreshMealRequests();
     };
+    const handleBazaarUpdated = () => {
+      refreshBazaarAssignment();
+    };
+
     if (typeof window !== 'undefined') {
       window.addEventListener('meal-requests-changed', handleCustomMealReqChange);
+      window.addEventListener('bazaar-updated', handleBazaarUpdated);
     }
 
     return () => {
-      clearInterval(pollInterval);
       if (typeof window !== 'undefined') {
         window.removeEventListener('meal-requests-changed', handleCustomMealReqChange);
+        window.removeEventListener('bazaar-updated', handleBazaarUpdated);
       }
     };
-  }, [token, user, refreshAll, refreshMealRequests]);
+  }, [refreshMealRequests, refreshBazaarAssignment]);
 
   const pendingUsersCount = allUsers.filter(u => u.status === 'pending').length;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   X, 
   ShoppingBag, 
@@ -12,9 +12,11 @@ import {
   Calculator, 
   AlertCircle, 
   CheckCircle2, 
-  Sparkles,
-  ArrowRight,
-  Receipt
+  Sparkles, 
+  ArrowRight, 
+  Receipt,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { BazaarAssignment, BazaarItem } from '@/src/types/bazaar';
 import { showSuccessAlert, showErrorAlert, showWarningAlert } from '@/src/lib/alerts';
@@ -42,6 +44,7 @@ export default function LiveBazaarModal({
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [isOnline, setIsOnline] = useState<boolean>(true);
 
   // New extra item input
   const [showAddExtra, setShowAddExtra] = useState(false);
@@ -49,32 +52,142 @@ export default function LiveBazaarModal({
   const [extraQty, setExtraQty] = useState('');
   const [extraCost, setExtraCost] = useState('');
 
+  // Process offline queued bazaar submissions
+  const flushOfflineBazaarQueue = useCallback(async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return;
+    const QUEUE_KEY = 'familia_offline_bazaar_queue';
+    let queue: any[] = [];
+    try {
+      queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+    } catch (e) {
+      return;
+    }
+    if (queue.length === 0) return;
+
+    const remaining: any[] = [];
+    let synced = 0;
+
+    for (const item of queue) {
+      try {
+        const res = await fetch('/api/bazaar/expense', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(item),
+        });
+        if (res.ok) {
+          synced++;
+        } else {
+          remaining.push(item);
+        }
+      } catch (err) {
+        remaining.push(item);
+      }
+    }
+
+    try {
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(remaining));
+    } catch (e) {}
+
+    if (synced > 0) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bazaar-updated'));
+      }
+      showSuccessAlert(
+        'অটো-সিঙ্ক সম্পন্ন হয়েছে!',
+        `${synced}টি অফলাইনে সংরক্ষিত বাজার সফলভাবে ম্যানেজারের কাছে জমা হয়েছে!`
+      );
+      onSuccess?.();
+    }
+  }, [token, onSuccess]);
+
+  // Track online/offline status & trigger queue flush
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsOnline(navigator.onLine);
+
+      const handleOnline = () => {
+        setIsOnline(true);
+        flushOfflineBazaarQueue();
+      };
+      const handleOffline = () => {
+        setIsOnline(false);
+      };
+
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+
+      // Try flushing queue on mount
+      if (navigator.onLine) {
+        flushOfflineBazaarQueue();
+      }
+
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
+  }, [flushOfflineBazaarQueue]);
+
+  // Initialize data and restore draft if present
   useEffect(() => {
     if (assignment) {
       const cash = assignment.allocatedCash ?? assignment.budget ?? 0;
       setAllocatedCash(cash);
 
+      let initialItems: BazaarItem[] = [];
       if (assignment.items && assignment.items.length > 0) {
-        setItems(assignment.items.map(i => ({
+        initialItems = assignment.items.map(i => ({
           name: i.name,
           qty: i.qty || '',
           cost: Number(i.cost || 0),
           isExtra: !!i.isExtra,
           checked: !!i.checked,
-        })));
+        }));
       } else if (assignment.shoppingList && assignment.shoppingList.length > 0) {
-        setItems(assignment.shoppingList.map((str: any) => ({
+        initialItems = assignment.shoppingList.map((str: any) => ({
           name: typeof str === 'string' ? str : str.name || 'Item',
           qty: typeof str === 'object' ? str.qty || '' : '',
           cost: typeof str === 'object' ? Number(str.cost || 0) : 0,
           isExtra: false,
           checked: false,
-        })));
-      } else {
-        setItems([]);
+        }));
       }
+
+      // Check for saved local draft
+      if (typeof window !== 'undefined') {
+        try {
+          const draftKey = `familia_bazaar_draft_${assignment.id}`;
+          const savedDraft = localStorage.getItem(draftKey);
+          if (savedDraft) {
+            const parsed = JSON.parse(savedDraft);
+            if (parsed.items && Array.isArray(parsed.items) && parsed.items.length > 0) {
+              setItems(parsed.items);
+            } else {
+              setItems(initialItems);
+            }
+            if (parsed.remarks) setRemarks(parsed.remarks);
+            if (parsed.receiptImage) setReceiptImage(parsed.receiptImage);
+            return;
+          }
+        } catch (e) {}
+      }
+
+      setItems(initialItems);
     }
   }, [assignment]);
+
+  // Auto-save draft on changes
+  useEffect(() => {
+    if (assignment && items.length > 0 && typeof window !== 'undefined') {
+      try {
+        const draftKey = `familia_bazaar_draft_${assignment.id}`;
+        localStorage.setItem(draftKey, JSON.stringify({ items, remarks, receiptImage }));
+      } catch (e) {}
+    }
+  }, [assignment, items, remarks, receiptImage]);
 
   if (!isOpen || !assignment) return null;
 
@@ -132,9 +245,59 @@ export default function LiveBazaarModal({
     }
   };
 
+  const queueOfflineSubmission = async (payload: any) => {
+    try {
+      const QUEUE_KEY = 'familia_offline_bazaar_queue';
+      let currentQueue: any[] = [];
+      try {
+        currentQueue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+      } catch (e) {
+        currentQueue = [];
+      }
+      currentQueue.push({ ...payload, queuedAt: new Date().toISOString() });
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(currentQueue));
+
+      // Clear draft
+      try {
+        localStorage.removeItem(`familia_bazaar_draft_${assignment.id}`);
+      } catch (e) {}
+
+      await showSuccessAlert(
+        'রিকোয়েস্ট গ্রহণ করা হয়েছে! (অফলাইন মোড)',
+        'আপনার ডিভাইস বর্তমানে অফলাইনে আছে। বাজার সফলভাবে সংরক্ষিত হয়েছে। ইন্টারনেট সংযোগ পাওয়া মাত্রই স্বয়ংক্রিয়ভাবে ম্যানেজারের নিকট বাজার বিবরণী পৌঁছে যাবে।'
+      );
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bazaar-updated'));
+      }
+      onSuccess?.();
+      onClose();
+    } catch (e) {
+      console.error('Error saving to offline queue', e);
+      showErrorAlert('Error', 'অফলাইনে তথ্য সংরক্ষণ করতে ব্যর্থ হয়েছে।');
+    }
+  };
+
   const handleSubmit = async () => {
     if (items.length === 0) {
       showWarningAlert('No Items', 'Please add at least one purchased item.');
+      return;
+    }
+
+    const payload = {
+      assignmentId: assignment.id,
+      date: assignment.date,
+      allocatedCash,
+      returnedCash,
+      totalCost: totalSpent,
+      items,
+      remarks,
+      receiptImage,
+    };
+
+    // If device is offline right now, queue directly
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await queueOfflineSubmission(payload);
       return;
     }
 
@@ -146,16 +309,7 @@ export default function LiveBazaarModal({
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          assignmentId: assignment.id,
-          date: assignment.date,
-          allocatedCash,
-          returnedCash,
-          totalCost: totalSpent,
-          items,
-          remarks,
-          receiptImage,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -163,16 +317,35 @@ export default function LiveBazaarModal({
         throw new Error(err.message || 'Failed to submit bazaar bill');
       }
 
+      // Clear draft on successful submit
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem(`familia_bazaar_draft_${assignment.id}`);
+        } catch (e) {}
+      }
+
       await showSuccessAlert(
         'বাজার বিল জমা হয়েছে!',
         'Bazaar bill submitted successfully! Awaiting manager reconciliation.'
       );
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bazaar-updated'));
+      }
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      console.error(err);
-      showErrorAlert('Submission Error', err.message || 'Error submitting bazaar bill');
-      onError?.(err.message || 'Error submitting bazaar bill');
+      console.warn('Submission network failed, checking if offline queue fallback is appropriate', err);
+      if (
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        err?.message?.includes('fetch') ||
+        err?.message?.includes('Network') ||
+        err?.name === 'TypeError'
+      ) {
+        await queueOfflineSubmission(payload);
+      } else {
+        showErrorAlert('Submission Error', err.message || 'Error submitting bazaar bill');
+        onError?.(err.message || 'Error submitting bazaar bill');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -188,10 +361,21 @@ export default function LiveBazaarModal({
               <ShoppingBag className="w-5 h-5 text-emerald-200" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
-                Live Market Mode (লাইভ কাঁচাবাজার)
-                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-medium">Mobile Dock</span>
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
+                  Live Market Mode (লাইভ কাঁচাবাজার)
+                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-medium">Mobile Dock</span>
+                </h2>
+                {isOnline ? (
+                  <span className="px-2 py-0.5 bg-emerald-500/30 text-emerald-100 border border-emerald-400/30 text-[10px] font-bold rounded-full flex items-center gap-1">
+                    <Wifi className="w-3 h-3 text-emerald-200" /> অনলাইন
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-amber-500/30 text-amber-100 border border-amber-400/40 text-[10px] font-bold rounded-full flex items-center gap-1 animate-pulse">
+                    <WifiOff className="w-3 h-3 text-amber-200" /> অফলাইন মোড
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-emerald-100 opacity-90">
                 Date: {assignment.date} | Assigned: {assignment.userName || 'Member 1'}
                 {assignment.member2Name && ` & ${assignment.member2Name}`}

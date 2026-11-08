@@ -76,31 +76,53 @@ export async function GET(req: NextRequest) {
         ? Math.round((totalBazaarExpenses / messTotalMeals) * 100) / 100
         : 0;
 
-    // 3. Today's CONFIRMED meals (only counts locked/cooked meal sessions)
+    // 3. Today's live and confirmed meals
     const todayDaily = db.dailyMeals.find((d) => d.date === today);
+    const cleanEmail = user?.email?.toLowerCase().trim();
+    const autoBookDefault = db.settings?.autoBookMeals !== undefined ? db.settings.autoBookMeals : true;
 
-    let todayMyMeals = 0;
-    let todayMessMeals = 0;
-
-    // Today Lunch
     let todayMyLunch = 0;
     let todayMessLunch = 0;
+
     if (todayDaily?.lunch?.isLocked) {
-      todayMessLunch = todayDaily.lunch.totalCount;
-      todayMyLunch = todayDaily.lunch.activeMembers?.some((m) => m.userId === userId) ? 1 : 0;
-      todayMyMeals += todayMyLunch;
-      todayMessMeals += todayMessLunch;
+      todayMessLunch = todayDaily.lunch.totalCount || 0;
+      todayMyLunch = todayDaily.lunch.activeMembers?.some((m) => m.userId === userId || (cleanEmail && (m as any).userEmail === cleanEmail)) ? 1 : 0;
+    } else {
+      for (const m of eligibleMembers) {
+        const mEmail = m.email?.toLowerCase().trim();
+        const mRec = db.records.find(
+          r => (r.userId === m.id || (mEmail && r.userId === mEmail)) && r.date === today && r.mealType === 'lunch'
+        );
+        const count = mRec !== undefined ? mRec.count : (autoBookDefault ? 1 : 0);
+        todayMessLunch += count;
+        if (m.id === userId || (cleanEmail && mEmail === cleanEmail)) {
+          todayMyLunch = count;
+        }
+      }
     }
 
-    // Today Dinner
     let todayMyDinner = 0;
     let todayMessDinner = 0;
+
     if (todayDaily?.dinner?.isLocked) {
-      todayMessDinner = todayDaily.dinner.totalCount;
-      todayMyDinner = todayDaily.dinner.activeMembers?.some((m) => m.userId === userId) ? 1 : 0;
-      todayMyMeals += todayMyDinner;
-      todayMessMeals += todayMessDinner;
+      todayMessDinner = todayDaily.dinner.totalCount || 0;
+      todayMyDinner = todayDaily.dinner.activeMembers?.some((m) => m.userId === userId || (cleanEmail && (m as any).userEmail === cleanEmail)) ? 1 : 0;
+    } else {
+      for (const m of eligibleMembers) {
+        const mEmail = m.email?.toLowerCase().trim();
+        const mRec = db.records.find(
+          r => (r.userId === m.id || (mEmail && r.userId === mEmail)) && r.date === today && r.mealType === 'dinner'
+        );
+        const count = mRec !== undefined ? mRec.count : (autoBookDefault ? 1 : 0);
+        todayMessDinner += count;
+        if (m.id === userId || (cleanEmail && mEmail === cleanEmail)) {
+          todayMyDinner = count;
+        }
+      }
     }
+
+    const todayMyMeals = todayMyLunch + todayMyDinner;
+    const todayMessMeals = todayMessLunch + todayMessDinner;
 
     return NextResponse.json({
       myTotalMeals: isMonthMealOff ? 0 : myTotalMeals,

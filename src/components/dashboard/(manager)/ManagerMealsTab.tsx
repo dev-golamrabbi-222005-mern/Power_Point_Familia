@@ -83,7 +83,7 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
   const fetchMealsData = async () => {
     try {
       setLoading(true);
-      const [membersRes, assignRes, expRes, pairsRes, statsRes, recordsRes, reqRes] = await Promise.all([
+      const [membersRes, assignRes, expRes, pairsRes, statsRes, recordsRes, reqRes, overviewRes] = await Promise.all([
         fetch('/api/members', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/bazaar/assign', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/bazaar/expense', { headers: { Authorization: `Bearer ${token}` } }),
@@ -91,6 +91,7 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
         fetch('/api/dashboard/stats', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/records', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/records/request-meal-off', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/dashboard/manager-overview', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       if (membersRes.ok) setMembers(await membersRes.json());
@@ -98,6 +99,11 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
       if (expRes.ok) setExpenses(await expRes.json());
       if (reqRes.ok) setMealRequests(await reqRes.json());
       
+      let overviewData: any = null;
+      if (overviewRes.ok) {
+        overviewData = await overviewRes.json();
+      }
+
       if (pairsRes.ok) {
         const pairData = await pairsRes.json();
         setPairs(pairData.pairs || []);
@@ -110,24 +116,23 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
         const mStats = stats.managerStats;
 
         const today = new Date().toISOString().split('T')[0];
-        const todayRecords = records.filter(r => r.date === today);
-
-        const todayLunch = todayRecords.filter(r => r.mealType === 'lunch').reduce((s, r) => s + (r.count || 0), 0);
-        const todayDinner = todayRecords.filter(r => r.mealType === 'dinner').reduce((s, r) => s + (r.count || 0), 0);
-
         const currentMonth = today.slice(0, 7);
         const monthRecords = records.filter(r => r.date && r.date.startsWith(currentMonth));
         const monthTotal = monthRecords.reduce((s, r) => s + (r.count || 0), 0);
 
+        const todayLunch = overviewData ? overviewData.todayLunchMeals : 0;
+        const todayDinner = overviewData ? overviewData.todayDinnerMeals : 0;
+        const todayTotal = overviewData ? overviewData.messTotalMealsToday : (todayLunch + todayDinner);
+
         setMealKpis({
-          todayTotal: todayLunch + todayDinner,
+          todayTotal,
           todayLunch,
           todayDinner,
           weekTotal: Math.round(monthTotal / 4),
           monthTotal,
           totalMealCashCollected: mStats?.totalSystemDeposits || 0,
           totalBazaarSpent: mStats?.totalBazaarExpenses || 0,
-          liveMealRate: mStats?.liveMealRate || 0,
+          liveMealRate: overviewData?.liveMealRate || mStats?.liveMealRate || 0,
         });
       }
     } catch (err) {
@@ -155,22 +160,29 @@ export default function ManagerMealsTab({ token, menus, onRefreshMenus, onError 
   useEffect(() => {
     fetchMealsData();
 
-    // Auto-poll for incoming meal-off requests every 4 seconds
+    // Auto-poll for incoming meal-off requests every 10 seconds while on tab
     const interval = setInterval(() => {
       fetchPendingMealRequests();
-    }, 4000);
+    }, 10000);
 
     const handleCustomChange = () => {
       fetchPendingMealRequests();
     };
+
+    const handleBazaarChange = () => {
+      fetchMealsData();
+    };
+
     if (typeof window !== 'undefined') {
       window.addEventListener('meal-requests-changed', handleCustomChange);
+      window.addEventListener('bazaar-updated', handleBazaarChange);
     }
 
     return () => {
       clearInterval(interval);
       if (typeof window !== 'undefined') {
         window.removeEventListener('meal-requests-changed', handleCustomChange);
+        window.removeEventListener('bazaar-updated', handleBazaarChange);
       }
     };
   }, [token]);

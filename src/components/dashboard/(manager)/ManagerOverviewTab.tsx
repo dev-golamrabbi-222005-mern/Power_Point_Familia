@@ -48,7 +48,7 @@ export default function ManagerOverviewTab({ token, onError }: ManagerOverviewTa
 
   useEffect(() => {
     fetchData();
-  }, [token, onError]);
+  }, [token]);
 
   if (loading) {
     return (
